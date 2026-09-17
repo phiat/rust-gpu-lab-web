@@ -7,11 +7,17 @@ site calls that workspace tileworld, after its local checkout.
 
 ![Home page: a live Mandelbrot render filled in one tile program at a time](docs/images/home.png)
 
+Needs [Deno](https://deno.com) 2.x; nothing else to install.
+
 ```bash
 deno task dev      # http://localhost:5173
 deno task check    # fmt + lint + type-check
 deno task build && deno task start
 ```
+
+The wiki and playground work on their own. The project page needs a local
+checkout of the workspace (see
+[Where the workspace is](#where-the-workspace-is)).
 
 ## What's here
 
@@ -93,11 +99,17 @@ Clone [rust-gpu-lab](https://github.com/phiat/rust-gpu-lab) anywhere and point
 the site at it with `TILEWORLD_DIR=/path/to/rust-gpu-lab`. Both `dev` and
 `start` must run from this directory, which is also where notes load from.
 
+The project page reads files and runs `git` in that directory, so keep the
+server on your own machine. `deno task start` listens on all interfaces
+(`0.0.0.0`), unlike `deno task dev`.
+
 `/project` shows PNG and JPEG images from the workspace root and up to two
 folders deep, such as `filters-out/` and the README screenshots in
 `docs/images/`. Notes can embed those, as in
-`![light2d](/project/renders/docs/images/light2d.png)`. It also lists the last
-10 commits plus anything uncommitted when the workspace is a git repo.
+`![render](/project/renders/docs/images/light2d.png)`, but only when the
+workspace is present. Images a note always needs belong in `static/images/`. It
+also lists the last 10 commits plus anything uncommitted when the workspace is a
+git repo.
 
 `islands/LifeStencil.tsx` ports `life_step` from `life/src/gpu.rs` (ghost-ring
 aliasing, offset-split views, branch-free rule) and checks it against a port of
@@ -128,6 +140,7 @@ routes/       pages; project/renders/[...path].ts serves PNGs from the workspace
               api/search.ts serves the search index
 assets/       styles.css; colors come from the crate's cosine palette
 client.ts     loads the stylesheet and wires up copy buttons
+static/       favicon, and images that notes embed
 docs/images/  README screenshots
 ```
 

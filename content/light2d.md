@@ -23,7 +23,7 @@ The workspace README's screenshot shows the demo scene lit by three lights, then
 the same frame's distance field, nearest surface (a Voronoi diagram) and raw
 radiance:
 
-![light2d: lit view, distance field, Voronoi and radiance](/project/renders/docs/images/light2d.png)
+![light2d: lit view, distance field, Voronoi and radiance](/images/light2d.png)
 
 It draws on almost every earlier crate: the offset split from [life](./life.md),
 now at any distance; the literal 32×32 shapes, parameter buffer and early exit
