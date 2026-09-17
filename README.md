@@ -1,8 +1,11 @@
 # tileworld-web
 
 A small Deno + Fresh 2 site that works as the wiki, demo area and learning
-notebook for [tileworld](../../tileworld), a Rust workspace for learning
-[cuTile Rust](https://github.com/NVlabs/cutile-rs).
+notebook for [rust-gpu-lab](https://github.com/phiat/rust-gpu-lab), a Rust
+workspace for learning [cuTile Rust](https://github.com/NVlabs/cutile-rs). The
+site calls that workspace tileworld, after its local checkout.
+
+![Home page: a live Mandelbrot render filled in one tile program at a time](docs/images/home.png)
 
 ```bash
 deno task dev      # http://localhost:5173
@@ -27,6 +30,39 @@ block has a copy button.
 The Mandelbrot demo keeps its view in the URL hash
 (`#view=cx,cy,span&iters=…&tile=…`), so a zoomed-in view can be shared. It also
 prints the `cargo run … render` command that renders the same view on the GPU.
+
+## Screenshots
+
+**Playground: the ray marcher.** The raymarch crate's `render` kernel, run tile
+program by tile program on the CPU. Drag to orbit; the readouts show how much of
+the march budget early exit saved and how many tiles skipped shading.
+
+![Playground ray marcher demo with camera, kernel and view controls](docs/images/playground-raymarch.png)
+
+**Steps per tile.** The same frame in the kernel's debug view. Tiles in front of
+the camera stop after 16 steps, sky tiles after 32, and tiles along the horizon
+use the whole budget.
+
+![Steps each 32×32 tile program ran, with a hovered tile's readout](docs/images/raymarch-tiles.png)
+
+**Playground: Life with a ghost ring.** Pointing at a ghost tile shows the
+interior tile it recomputes (dashed) and the nine views its program loads.
+
+![Life demo with a ghost tile program selected and its views listed](docs/images/playground-life.png)
+
+**Wiki, dark theme.** Every note has section navigation and an outline. This is
+the `light2d` project note.
+
+![The light2d project note in the dark theme](docs/images/wiki-light2d.png)
+
+**Project page.** Toolchain and GPU probe, then the workspace's git history,
+read from disk on each request.
+
+![Project page with the toolchain probe and commit history](docs/images/project.png)
+
+**On a phone.** The stencils note at 390 px wide.
+
+<img src="docs/images/mobile-stencils.png" alt="The stencils note on a phone, dark theme" width="320">
 
 ## Notes
 
@@ -53,12 +89,15 @@ exists.
 ## Where the workspace is
 
 `/project` reads `../../tileworld` relative to the working directory by default.
-Point it elsewhere with `TILEWORLD_DIR=/path/to/tileworld`. Both `dev` and
+Clone [rust-gpu-lab](https://github.com/phiat/rust-gpu-lab) anywhere and point
+the site at it with `TILEWORLD_DIR=/path/to/rust-gpu-lab`. Both `dev` and
 `start` must run from this directory, which is also where notes load from.
 
-`/project` shows PNGs from the workspace root and from its top-level output
-folders (such as `filters-out/`), and lists the last 10 commits plus anything
-uncommitted when the workspace is a git repo.
+`/project` shows PNG and JPEG images from the workspace root and up to two
+folders deep, such as `filters-out/` and the README screenshots in
+`docs/images/`. Notes can embed those, as in
+`![light2d](/project/renders/docs/images/light2d.png)`. It also lists the last
+10 commits plus anything uncommitted when the workspace is a git repo.
 
 `islands/LifeStencil.tsx` ports `life_step` from `life/src/gpu.rs` (ghost-ring
 aliasing, offset-split views, branch-free rule) and checks it against a port of
@@ -89,4 +128,5 @@ routes/       pages; project/renders/[...path].ts serves PNGs from the workspace
               api/search.ts serves the search index
 assets/       styles.css; colors come from the crate's cosine palette
 client.ts     loads the stylesheet and wires up copy buttons
+docs/images/  README screenshots
 ```
