@@ -173,9 +173,13 @@ cutile::jit_cache::enable(std::sync::Arc::new(
 ));
 ```
 
-Kernel scalars aren't part of the cache key (`generics=` is empty), so switching
-quality doesn't recompile. `CUTILE_JIT_TIMING=1` shows each stage and whether
-the kernel came from disk.
+`generics=` is empty, but the cache key still records each integer argument's
+largest power-of-two divisor, capped at 16 (and the same for tensor shapes,
+strides and pointers). Every preset's step counts are multiples of 16, so
+switching quality doesn't recompile, but a 100-step preset would. `light2d` got
+10 variants of one kernel this way. `CUTILE_JIT_TIMING=1` shows each stage and
+whether the kernel came from disk. See
+[what makes a new specialization](./compilation.md#what-makes-a-new-specialization).
 
 ## Results
 

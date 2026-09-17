@@ -16,7 +16,7 @@ deno task build && deno task start
 | ------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `/`           | Reading order, a live tile-by-tile render, and a glance at the workspace                                          |
 | `/wiki`       | Markdown notes from `content/`. Edit or add a file and refresh.                                                   |
-| `/playground` | Islands: a partition → launch grid explorer, a tile-by-tile Mandelbrot, and Life                                  |
+| `/playground` | Islands: a partition → launch grid explorer, a tile-by-tile Mandelbrot, Life, and a ray marcher                   |
 | `/project`    | The tileworld workspace read live from disk: git history, GPU/CUDA probe, deps, crate READMEs and source, renders |
 | `/api/search` | JSON index of every note (title, summary, headings) for the search palette                                        |
 
@@ -68,16 +68,24 @@ aliasing, offset-split views, branch-free rule) and checks it against a port of
 early-exit step counts) for both the home page render and the playground. Update
 it if those change, and check the preset locations still look right.
 
+`lib/raymarch.ts` ports the `render` kernel from `raymarch/src/gpu.rs`, with the
+scalar math from `cpu.rs`: rays march in lockstep per 32 × 32 tile, and tiles
+exit early and skip shading the way the kernel does. Update it if the scene,
+shading, quality presets or camera change.
+
+Restart `deno task dev` after adding a new island. The running Vite server
+doesn't register it, and every island on the page stops hydrating until then.
+
 ## Layout
 
 ```text
 content/      markdown notes
 lib/          wiki loader, markdown + highlighting, workspace reader,
-              mandelbrot math shared by the islands
-islands/      GridExplorer, TileMandelbrot, LifeStencil, HeroRender,
-              SearchPalette, ThemeToggle (client-side)
+              mandelbrot and raymarch math for the islands
+islands/      GridExplorer, TileMandelbrot, LifeStencil, TileRaymarch,
+              HeroRender, SearchPalette, ThemeToggle (client-side)
 components/   WikiNav
-routes/       pages; project/renders/[name].ts serves PNGs from the workspace,
+routes/       pages; project/renders/[...path].ts serves PNGs from the workspace,
               api/search.ts serves the search index
 assets/       styles.css; colors come from the crate's cosine palette
 client.ts     loads the stylesheet and wires up copy buttons

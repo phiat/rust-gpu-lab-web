@@ -466,7 +466,9 @@ export default function LifeStencil() {
               value={tile}
               onChange={(e) => changeTile(Number(e.currentTarget.value))}
             >
-              {TILE_SIZES.map((t) => <option value={t}>{t} × {t}</option>)}
+              {TILE_SIZES.map((t) => (
+                <option key={t} value={t}>{t} × {t}</option>
+              ))}
             </select>
           </label>
         </fieldset>

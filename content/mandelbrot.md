@@ -196,11 +196,10 @@ ms, 64 px 10.4 ms, **128 px 85 ms, 256 px 1577 ms**. The first launch grows too:
 ## Still open
 
 - **Recompiles from `--iters`.** Float scalars don't create specializations, but
-  the book says scalar hints are bucketed by power-of-two divisibility. Check
-  whether 1000 → 1024 iterations recompiles, using `CUTILE_JIT_TIMING=1`.
-  `raymarch` found its integer step counts aren't part of the cache key, but its
-  presets (64, 128, 256) are all divisible by 16, so this case is still
-  untested.
+  `raymarch` and `light2d` found that integer scalars are keyed by their largest
+  power-of-two divisor, capped at 16. So 1000 iterations (divisible by 8) and
+  1024 should compile separate kernels, while 256 and 1024 share one. Confirm it
+  here with `CUTILE_JIT_TIMING=1`.
 - **Precision.** `f32` limits zoom depth. What does an `f64` path cost?
 - **Disk cache.** Not turned on here yet. In `raymarch` it cut a 30 s first
   start to about 1.5 s on later runs (see [Compilation](./compilation.md)).

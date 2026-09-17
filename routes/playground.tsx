@@ -3,6 +3,7 @@ import { define } from "../utils.ts";
 import GridExplorer from "../islands/GridExplorer.tsx";
 import TileMandelbrot from "../islands/TileMandelbrot.tsx";
 import LifeStencil from "../islands/LifeStencil.tsx";
+import TileRaymarch from "../islands/TileRaymarch.tsx";
 
 export default define.page(function Playground() {
   return (
@@ -76,6 +77,28 @@ export default define.page(function Playground() {
           </p>
         </div>
         <LifeStencil />
+      </section>
+
+      <section class="demo" aria-labelledby="raymarch-demo">
+        <div class="demo-intro">
+          <h2 id="raymarch-demo">A ray marcher that stops early</h2>
+          <p>
+            The <code>render</code> kernel from the{" "}
+            <a href="/wiki/raymarch">raymarch crate</a>, with the same scene,
+            march and shading. Each 32 × 32 tile program marches all of its rays
+            together, checks every 16 steps whether any ray is still going, and
+            stops when none is. A tile where every ray misses skips shading
+            entirely.
+          </p>
+          <p>
+            Drag the image to orbit. While you drag, a coarse preview stands in,
+            and the tile programs relaunch when you let go. Switch to{" "}
+            <em>Steps per tile</em>{" "}
+            to see where the work goes: tiles along the horizon, where rays skim
+            the ground, use the whole budget.
+          </p>
+        </div>
+        <TileRaymarch />
       </section>
     </div>
   );

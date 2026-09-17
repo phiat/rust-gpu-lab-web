@@ -139,7 +139,9 @@ export default define.page(async function Project() {
                               }, +${commit.insertions} −${commit.deletions}`}
                           </span>
                         </summary>
-                        {commit.body.map((paragraph) => <p>{paragraph}</p>)}
+                        {commit.body.map((paragraph, i) => (
+                          <p key={i}>{paragraph}</p>
+                        ))}
                       </details>
                     </li>
                   ))}
@@ -321,10 +323,11 @@ function Readme({ crate, markdown }: { crate: string; markdown: string }) {
     idPrefix: `${crate}-readme-`,
     headingShift: 1,
   });
-  // deno-lint-ignore react-no-danger
   return (
     <div
       class="prose readme"
+      // README text comes from the local workspace.
+      // deno-lint-ignore react-no-danger
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

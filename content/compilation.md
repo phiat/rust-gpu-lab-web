@@ -27,20 +27,24 @@ It works a lot like Rust monomorphization. A **specialization** is one compiled
 variant for one entry function, one target GPU, and one set of compile-time
 inputs.
 
-| Causes a recompile                                                    | Doesn't                            |
-| --------------------------------------------------------------------- | ---------------------------------- |
-| element types (`f32` vs `f16`)                                        | tensor **contents**                |
-| const generic values, e.g. the tile shape from `.partition([BM, BN])` | **dynamic** (`-1`) dimensions      |
-| static dims bound from a tensor's shape                               | floating-point **scalar** values   |
-| compile options (`max_divisibility`, …)                               | runtime grid set with `.grid(...)` |
-| target GPU architecture (`sm_89`, `sm_90`, …)                         |                                    |
+| Causes a recompile                                                         | Doesn't                               |
+| -------------------------------------------------------------------------- | ------------------------------------- |
+| element types (`f32` vs `f16`)                                             | tensor **contents**                   |
+| const generic values, e.g. the tile shape from `.partition([BM, BN])`      | **dynamic** (`-1`) dimensions         |
+| static dims bound from a tensor's shape                                    | floating-point **scalar** values      |
+| compile options (`max_divisibility`, …)                                    | runtime grid set with `.grid(...)`    |
+| target GPU architecture (`sm_89`, `sm_90`, …)                              |                                       |
+| power-of-two divisibility of integer scalars and dynamic dims (100 vs 128) | values in the same bucket (64 vs 128) |
 
 So in a Mandelbrot kernel, changing **tile size** recompiles, but panning or
 zooming by passing new `f32` scalars shouldn't.
 
-One subtlety: dynamic dims carry divisibility hints bucketed by powers of two
-(capped at 16). Sizes such as 16, 32, 64 and 1024 share a hint, but moving from
-a size divisible by 8 to one divisible by 16 can produce a new cache entry.
+One subtlety: the cache key records the largest power-of-two divisor, capped at
+16, of every integer scalar argument and of every tensor's shape, strides and
+base pointer. Values such as 16, 32, 64 and 1024 share a bucket, while 100
+(divisible by 4) and 1000 (divisible by 8) land in others. `light2d`'s
+jump-flooding kernel compiles into 10 variants this way, because its passes
+differ in block offsets and view shifts (16, 8, 4, 2, 1).
 
 ## Disk cache (opt-in)
 
@@ -60,8 +64,10 @@ cutile::jit_cache::enable(std::sync::Arc::new(
 ```
 
 Its kernel takes about 30 s to compile the first time and about 1.5 s to start
-after that. Any edit to the kernel changes the cache key. Kernel scalars aren't
-part of it, so running with different step counts reuses the cached kernel.
+after that. Any edit to the kernel changes the cache key. Its step counts are
+integer scalars, so only their divisibility matters: the presets (64, 128 and
+256 steps) are all multiples of 16 and share one cached kernel, but a 100-step
+preset would compile another.
 
 ## Compile time grows with inlining
 

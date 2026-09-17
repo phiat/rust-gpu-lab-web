@@ -1134,7 +1134,8 @@ th {
 
 .explorer,
 .mandel,
-.life {
+.life,
+.raymarch {
   padding: clamp(1rem, 2.5vw, 1.75rem);
   border: 1px solid var(--rule);
   border-radius: var(--radius-lg);
@@ -1386,7 +1387,8 @@ th {
 }
 
 .explorer > .codeblock,
-.mandel > .codeblock {
+.mandel > .codeblock,
+.raymarch > .codeblock {
   margin-bottom: 0;
 }
 
@@ -1524,6 +1526,19 @@ table.views small {
 
 .readout-inline dd.is-partial {
   color: var(--ember);
+}
+
+.raymarch .canvas-wrap .overlay {
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.raymarch .canvas-wrap .overlay.is-dragging {
+  cursor: grabbing;
+}
+
+.raymarch .canvas-wrap .overlay:focus-visible {
+  outline-offset: -3px;
 }
 
 /* ---------- project ---------- */
