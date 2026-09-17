@@ -32,8 +32,9 @@ views: shaded, march steps per pixel, and steps each tile ran. `1`, `2` and `3`
 set quality, `P` saves a screenshot, and Esc quits.
 
 **The first run takes about 30 s** while `tileiras` compiles the kernel. `main`
-turns on cuTile's disk cache, so later runs start in about 1.5 s. Any change to
-the kernel changes its cache key and pays the full compile again.
+turns on cuTile's disk cache (`tilekit::enable_jit_cache()`), so later runs
+start in about 1.5 s. Any change to the kernel changes its cache key and pays
+the full compile again.
 
 ## Layout
 
@@ -82,13 +83,14 @@ fn param(p: Params, k: i32) -> F {
 }
 ```
 
-Each frame copies new values into the same buffer, then replays the graph:
+Each frame copies new values into the same buffer, then replays the graph. The
+copy goes through a pinned host buffer ([tilekit](./tilekit.md#pinned-buffers)),
+so it allocates nothing:
 
 ```rust
 pub fn set_params(&mut self, params: &[f32; PARAMS]) -> Result<(), Error> {
-    let src = api::copy_host_vec_to_device(&Arc::new(params.to_vec())).sync_on(&self.stream)?;
-    api::memcpy(&mut self.params, &src).sync_on(&self.stream)?;
-    Ok(())
+    self.params_host.as_mut_slice().copy_from_slice(params);
+    self.params_host.upload(&mut self.params, &self.stream)
 }
 ```
 
@@ -167,11 +169,9 @@ Folding the 4 samples into a `for` loop cut that to 26 s, and the finished
 kernel takes about 31 s. Building the IR also costs about 1.4 s on every start,
 even when the compiled kernel comes from the disk cache.
 
-```rust
-cutile::jit_cache::enable(std::sync::Arc::new(
-    cutile::jit_cache::FileSystemJitStore::default_location()?,
-));
-```
+The disk cache is opt-in: `main` calls `tilekit::enable_jit_cache()`, which
+wraps `cutile::jit_cache::enable(...)` (see
+[Compilation](./compilation.md#disk-cache-opt-in)).
 
 `generics=` is empty, but the cache key still records each integer argument's
 largest power-of-two divisor, capped at 16 (and the same for tensor shapes,
@@ -193,8 +193,10 @@ frame:
 | high (256 / 64)                | 256 ms    | 4.14 ms   | 4.10 ms   | 9.58 ms            |
 
 That's 55–62× faster than rayon. The 1280×720 window at medium quality runs at
-about 310 fps: 1.65 ms rendering, 0.4 ms downloading and 0.12 ms uploading
-parameters.
+about 335 fps: 1.65 ms rendering, 0.23 ms downloading and 0.05 ms uploading
+parameters, through pinned host buffers. With pageable transfers it was 310 fps,
+with a 0.4 ms download. The remaining millisecond per frame is the window:
+presenting the image and polling input.
 
 A frame is a single kernel launch, so the graph barely beats eager (3.17 vs 3.19
 ms). `life`, which launches a kernel per generation, gained up to 5×.
@@ -223,4 +225,5 @@ bits, but sphere tracing didn't amplify that into different hits.
 - Anti-aliasing with 4 rays per pixel (the checkerboard shimmers in the
   distance), or temporal accumulation while the camera is still.
 - A 16×16 kernel for finer early exit, which needs a second copy of the kernel.
-- Pinned host memory for the download, now about 20% of the frame.
+- Launch frame N+1 before presenting frame N, so the GPU works while the window
+  (about 1 ms per frame) is busy.

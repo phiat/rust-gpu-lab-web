@@ -49,12 +49,13 @@ because their addresses could change on replay.
 | tensor shapes       | capture one graph per size                           |
 | the sequence of ops | keep host-side control flow out of the replayed part |
 
-New input goes into the fixed input buffer, not a new tensor. From `filters`:
+New input goes into the fixed input buffer, not a new tensor. `filters` first
+did that with a device-to-device copy:
 
 ```rust
-/// Copy a padded RGBA frame into the input buffer (no reallocation, so a
-/// captured graph stays valid).
-pub fn upload(&mut self, padded_rgba: Vec<u8>) -> Result<(), Error> {
+/// The slow way, for comparison: allocate a device tensor, copy from
+/// pageable memory, then copy device to device into the input buffer.
+pub fn upload_pageable(&mut self, padded_rgba: Vec<u8>) -> Result<(), Error> {
     let shape = [self.dims.padded_rows(), self.dims.padded_cols(), 4];
     let src = api::copy_host_vec_to_device(&Arc::new(padded_rgba))
         .sync_on(&self.stream)?
@@ -63,6 +64,19 @@ pub fn upload(&mut self, padded_rgba: Vec<u8>) -> Result<(), Error> {
     Ok(())
 }
 ```
+
+It now copies straight from a pinned host buffer into that same tensor, which
+drops the allocation and the second copy:
+
+```rust
+/// Copy `frame_in` into the input buffer. The buffer is reused, so a
+/// captured graph stays valid.
+pub fn upload(&mut self) -> Result<(), Error> {
+    self.frame_in.upload(&mut self.rgba, &self.stream)
+}
+```
+
+[tilekit](./tilekit.md#pinned-buffers) has the buffer type and what it saved.
 
 ## What that meant in tileworld
 
@@ -82,11 +96,14 @@ pub fn upload(&mut self, padded_rgba: Vec<u8>) -> Result<(), Error> {
   and alternates between them.
 - **Recording didn't advance the state.** In `life`'s benchmark, the world after
   `launches × gens` replays matched the CPU after exactly that many generations.
-- **Reading a buffer the graph keeps writing** uses `.dup().to_host_vec()`,
-  because `to_host_vec()` consumes the tensor.
+- **Reading a buffer the graph keeps writing.** `to_host_vec()` consumes its
+  tensor, so the first versions read with `.dup().to_host_vec()`: a device copy
+  and a new `Vec` per frame. `filters`, `raymarch` and `light2d` now download
+  into a pinned host buffer instead, which borrows the tensor and allocates
+  nothing. `life` still uses `dup()`.
 - **One pipeline, both ways.** `filters` and `light2d` write their chains once
-  against a small trait. `Eager` syncs each op, and the graph `Scope` records
-  it:
+  against a small trait, which now lives in [tilekit](./tilekit.md). `Eager`
+  syncs each op, and the graph `Scope` records it:
 
 ```rust
 pub trait Submit {

@@ -55,19 +55,32 @@ cutile::jit_cache::enable_default()?; // ~/.cache/cutile/kernels, 2 GiB LRU
 ```
 
 See `cutile-examples/examples/jit_disk_cache.rs`. Run it twice and the second
-run loads from disk. `raymarch` and `light2d` pass the store explicitly:
+run loads from disk. Every tileworld demo turns it on through one helper in
+[tilekit](./tilekit.md), which passes the store explicitly:
 
 ```rust
-cutile::jit_cache::enable(std::sync::Arc::new(
-    cutile::jit_cache::FileSystemJitStore::default_location()?,
-));
+pub fn enable_jit_cache() -> Result<(), Box<dyn std::error::Error>> {
+    cutile::jit_cache::enable(Arc::new(
+        cutile::jit_cache::FileSystemJitStore::default_location()?,
+    ));
+    Ok(())
+}
 ```
 
-Its kernel takes about 30 s to compile the first time and about 1.5 s to start
-after that. Any edit to the kernel changes the cache key. Its step counts are
-integer scalars, so only their divisibility matters: the presets (64, 128 and
-256 steps) are all multiples of 16 and share one cached kernel, but a 100-step
-preset would compile another.
+| Demo                            | First start      | Later runs  |
+| ------------------------------- | ---------------- | ----------- |
+| `mandelbrot`, `life`, `filters` | about 0.75–0.9 s | about 0.3 s |
+| `raymarch`                      | about 30 s       | about 1.5 s |
+| `light2d`, 15 kernels           | 15 compiles      | about 4 s   |
+
+A hit skips `tileiras` but not the IR build, which costs 40–300 ms per kernel
+variant on every start. That's why `light2d` still takes seconds.
+
+`raymarch`'s kernel takes about 30 s to compile the first time and about 1.5 s
+to start after that. Any edit to the kernel changes the cache key. Its step
+counts are integer scalars, so only their divisibility matters: the presets (64,
+128 and 256 steps) are all multiples of 16 and share one cached kernel, but a
+100-step preset would compile another.
 
 ## Compile time grows with inlining
 

@@ -30,11 +30,11 @@ it and leave the real edges. If you've run both commands, the
 
 ## Layout
 
-| File      | Role                                                                   |
-| --------- | ---------------------------------------------------------------------- |
-| `main.rs` | clap CLI (`run`, `bench`), `Dims` and padding, synthetic test image    |
-| `gpu.rs`  | four kernels, the `Submit` trait, `Pipeline` with preallocated buffers |
-| `cpu.rs`  | rayon reference with identical integer math                            |
+| File      | Role                                                                      |
+| --------- | ------------------------------------------------------------------------- |
+| `main.rs` | clap CLI (`run`, `bench`), `Dims` and padding, synthetic test image       |
+| `gpu.rs`  | four kernels, `Pipeline` with preallocated stage and pinned frame buffers |
+| `cpu.rs`  | rayon reference with identical integer math                               |
 
 ## Padding
 
@@ -106,7 +106,8 @@ let mag: Tile<i32, { [B, B] }> = min_tile(mag, max);
 `.then(|out| next_op)` hands the previous output to a closure by value, but a
 stencil stage needs borrowed views of that output, and views made inside the
 closure can't outlive it. So `Pipeline` preallocates every stage buffer and
-submits each kernel through the `Submit` trait:
+submits each kernel through the `Submit` trait (now in [tilekit](./tilekit.md),
+shared with `light2d`):
 
 ```rust
 let mut src: &Tensor<u8> = &self.gray;
@@ -140,9 +141,21 @@ Ok(CudaGraph::scope(&stream, |s| Ok(self.run(s)?))?)
 | GPU eager | 0.84 ms | 0.76 ms | 0.94 ms |
 | GPU graph | 0.66 ms | 0.64 ms | 0.77 ms |
 
-End to end that's about 170 fps, and filtering is now the cheap part. Upload
-takes about 4.5 ms: a host-side copy of the 33 MB RGBA frame, a device
-allocation, and a pageable host-to-device copy.
+Filtering is the cheap part: moving the frame costs several times more. Per
+frame, with the graph:
+
+| Transfers                         | Upload | Download | End to end    |
+| --------------------------------- | ------ | -------- | ------------- |
+| pageable `Vec`, new device tensor | 4.6 ms | 0.8 ms   | about 170 fps |
+| pinned buffers, reused            | 3.0 ms | 0.4 ms   | about 245 fps |
+
+The first version cloned the 33 MB RGBA frame into a new `Vec`, allocated a
+device tensor, copied from pageable memory, then copied device to device into
+the buffer the graph reads. `tilekit::Pinned` replaces that with one copy from
+page-locked memory into the existing tensor. Of the 3.0 ms that remains, 1.3 ms
+is the benchmark copying its frame into the pinned buffer, so a decoder writing
+straight into `Pipeline::frame_in()` would skip it. See
+[tilekit](./tilekit.md#why-transfers-were-slow).
 
 ## Gotchas at `d92c160`
 
@@ -175,6 +188,8 @@ allocation, and a pageable host-to-device copy.
 
 ## Ideas to try next
 
-- Pinned host buffers for upload and download, now the end-to-end bottleneck.
+- Overlap transfers with compute: upload frame N+1 on a second stream while
+  frame N is filtered.
+- Upload 3 bytes per pixel instead of 4, since the alpha channel is padding.
 - Compare an `f32` Sobel using `sqrt(gx² + gy²)` with the integer L1 version.
 - Push a live video stream or webcam frames through the captured graph.

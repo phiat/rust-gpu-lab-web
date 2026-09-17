@@ -13,17 +13,19 @@ notebook: concept notes, interactive demos, and a live view of the workspace.
 
 ## The workspace
 
-| Piece                 | Value                                                                         |
-| --------------------- | ----------------------------------------------------------------------------- |
-| Crates                | `mandelbrot`, `life`, `filters`, `raymarch`, `light2d`                        |
-| Rust                  | edition 2021, `rust-version = "1.89"` (stable, no nightly)                    |
-| `cutile`, `cuda-core` | git, pinned to rev `d92c160`                                                  |
-| Other deps            | `clap`, `rayon`, `image` (PNG and JPEG), `minifb` (X11 only, for the windows) |
-| CUDA                  | `.cargo/config.toml` sets `CUDA_TOOLKIT_PATH` to CUDA 13.3                    |
-| History               | one commit per crate, then the top-level README and its screenshots           |
+| Piece                 | Value                                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Crates                | five demos (`mandelbrot`, `life`, `filters`, `raymarch`, `light2d`) and `tilekit`, their shared host helpers |
+| Rust                  | edition 2021, `rust-version = "1.89"` (stable, no nightly)                                                   |
+| `cutile`, `cuda-core` | git, pinned to rev `d92c160`                                                                                 |
+| Other deps            | `clap`, `rayon`, `image` (PNG and JPEG), `minifb` (X11 only, for the windows)                                |
+| CUDA                  | `.cargo/config.toml` sets `CUDA_TOOLKIT_PATH` to CUDA 13.3                                                   |
+| History               | one commit per crate, then the README, a license and `tilekit`                                               |
 
-Each crate has a CPU reference in `cpu.rs`, the cuTile version in `gpu.rs`, and
-a `bench` command that checks the two agree before timing them.
+Each demo has a CPU reference in `cpu.rs`, the cuTile version in `gpu.rs`, and a
+`bench` command that checks the two agree before timing them. From `life` on,
+`bench` also times the GPU replaying a CUDA graph. The crate READMEs call the
+workspace by its working name, tileworld, and so does this site.
 
 The pin exists for a reason spelled out in `Cargo.toml`: crates.io only has
 `0.3.1`, while `main` (`0.4.0`) is what the book documents, and the project is
@@ -84,32 +86,33 @@ cargo run --release -p <crate> -- --help               # every command and optio
 ```
 
 The first run of each demo JIT compiles its kernels. That takes under a second
-for `mandelbrot` and about 30 s for `raymarch`. `raymarch` and `light2d` save
-compiled kernels to `~/.cache/cutile/kernels`, so later runs start in a few
-seconds (see [Compilation](./compilation.md)).
+for `mandelbrot` and about 30 s for `raymarch`. Every demo saves compiled
+kernels to `~/.cache/cutile/kernels`, so later runs start in 0.3–4 s (see
+[Compilation](./compilation.md)).
 
 More flags are in each project note: [mandelbrot](./mandelbrot.md),
-[life](./life.md), [filters](./filters.md), [raymarch](./raymarch.md) and
-[light2d](./light2d.md).
+[life](./life.md), [filters](./filters.md), [raymarch](./raymarch.md),
+[light2d](./light2d.md) and [tilekit](./tilekit.md).
 
 ## Where each idea is taught
 
 The workspace README maps topics to crates. Here is the same map, with the notes
 that explain each topic:
 
-| Topic                                                                      | Crates                       | Notes                                                                         |
-| -------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------- |
-| Thinking in tile programs instead of pixel threads; masking with `select`  | `mandelbrot`                 | [Partitioning](./partitioning-and-the-grid.md), [mandelbrot](./mandelbrot.md) |
-| Per-tile early exit, and why the loop shape decides whether it pays off    | `mandelbrot`, `raymarch`     | [mandelbrot](./mandelbrot.md), [raymarch](./raymarch.md)                      |
-| Stencils that read neighbors: view shift plus block offset, ghost tiles    | `life`, `light2d`            | [Stencils](./stencils.md), [life](./life.md)                                  |
-| "Valid" convolutions that need no block arithmetic at all                  | `filters`                    | [Stencils](./stencils.md), [filters](./filters.md)                            |
-| CUDA graphs: ping-pong buffers, no allocation, when they pay off           | `life`, `filters`, `light2d` | [CUDA graphs](./cuda-graphs.md)                                               |
-| One `Submit` trait so the same pipeline runs eagerly or records a graph    | `filters`, `light2d`         | [CUDA graphs](./cuda-graphs.md), [filters](./filters.md)                      |
-| A whole shading pipeline in one kernel, with parameters in a device buffer | `raymarch`                   | [raymarch](./raymarch.md)                                                     |
-| Data-dependent reads through `unsafe` pointer gathers                      | `light2d`                    | [light2d](./light2d.md)                                                       |
-| JIT costs: compile time, the disk cache, specialization on divisibility    | `raymarch`, `light2d`        | [Compilation](./compilation.md)                                               |
-| The generic tile shape type bug, and writing literal shapes to avoid it    | `filters`, `raymarch`        | [filters](./filters.md), [raymarch](./raymarch.md)                            |
-| Matching float kernels to the CPU (within 1/255, then exactly)             | `raymarch`, `light2d`        | [raymarch](./raymarch.md), [light2d](./light2d.md)                            |
+| Topic                                                                      | Crates                          | Notes                                                                         |
+| -------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| Thinking in tile programs instead of pixel threads; masking with `select`  | `mandelbrot`                    | [Partitioning](./partitioning-and-the-grid.md), [mandelbrot](./mandelbrot.md) |
+| Per-tile early exit, and why the loop shape decides whether it pays off    | `mandelbrot`, `raymarch`        | [mandelbrot](./mandelbrot.md), [raymarch](./raymarch.md)                      |
+| Stencils that read neighbors: view shift plus block offset, ghost tiles    | `life`, `light2d`               | [Stencils](./stencils.md), [life](./life.md)                                  |
+| "Valid" convolutions that need no block arithmetic at all                  | `filters`                       | [Stencils](./stencils.md), [filters](./filters.md)                            |
+| CUDA graphs: ping-pong buffers, no allocation, when they pay off           | `life`, `filters`, `light2d`    | [CUDA graphs](./cuda-graphs.md)                                               |
+| One `Submit` trait so the same pipeline runs eagerly or records a graph    | `filters`, `light2d`, `tilekit` | [CUDA graphs](./cuda-graphs.md), [tilekit](./tilekit.md)                      |
+| A whole shading pipeline in one kernel, with parameters in a device buffer | `raymarch`                      | [raymarch](./raymarch.md)                                                     |
+| Data-dependent reads through `unsafe` pointer gathers                      | `light2d`                       | [light2d](./light2d.md)                                                       |
+| JIT costs: compile time, the disk cache, specialization on divisibility    | `raymarch`, `light2d`           | [Compilation](./compilation.md)                                               |
+| Pinned host buffers: transfers without per-frame allocation                | `filters`, `tilekit`            | [tilekit](./tilekit.md), [Host and device](./host-and-device.md)              |
+| The generic tile shape type bug, and writing literal shapes to avoid it    | `filters`, `raymarch`           | [filters](./filters.md), [raymarch](./raymarch.md)                            |
+| Matching float kernels to the CPU (within 1/255, then exactly)             | `raymarch`, `light2d`           | [raymarch](./raymarch.md), [light2d](./light2d.md)                            |
 
 To check that the toolchain works end to end, run the upstream hello world from
 a clone of `cutile-rs` checked out at the same rev:

@@ -141,8 +141,8 @@ launch includes JIT compilation.
 ## Results
 
 RTX 4070 Ti SUPER, i9-14900KF (28 threads), WSL2, 1920×1080, 64×64 tiles. GPU
-times are warm medians. Each new process first spends about 350–550 ms compiling
-kernels.
+times are warm medians. The first run spends about 350–550 ms compiling each
+kernel. Later runs load it from cuTile's disk cache and start in about 250 ms.
 
 Default view, 1000 iterations:
 
@@ -201,8 +201,9 @@ ms, 64 px 10.4 ms, **128 px 85 ms, 256 px 1577 ms**. The first launch grows too:
   1024 should compile separate kernels, while 256 and 1024 share one. Confirm it
   here with `CUTILE_JIT_TIMING=1`.
 - **Precision.** `f32` limits zoom depth. What does an `f64` path cost?
-- **Disk cache.** Not turned on here yet. In `raymarch` it cut a 30 s first
-  start to about 1.5 s on later runs (see [Compilation](./compilation.md)).
+- **A pinned download.** The 8 MB download takes 3 ms, four times longer than
+  the render. `tilekit::Pinned` would cut it (see [tilekit](./tilekit.md)). The
+  disk cache, once on this list, is on now.
 - **Palette on the GPU.** Output colors directly as `[B, B, 4]` RGBA. RGB won't
   work, because tile dimensions must be powers of two.
 - **A zoom animation** rendered into one preallocated buffer, as a warm-up for

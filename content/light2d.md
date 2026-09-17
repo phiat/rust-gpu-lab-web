@@ -28,7 +28,8 @@ radiance:
 It draws on almost every earlier crate: the offset split from [life](./life.md),
 now at any distance; the literal 32×32 shapes, parameter buffer and early exit
 from [raymarch](./raymarch.md); and the `Submit` trait from
-[filters](./filters.md), so one pipeline runs eagerly or records a graph.
+[filters](./filters.md), so one pipeline runs eagerly or records a graph. That
+trait and the pinned transfer buffers now live in [tilekit](./tilekit.md).
 
 ## Running it
 
@@ -247,9 +248,10 @@ are for the whole pipeline replayed as one CUDA graph.
 | 640×352, 32 × 64              | 28 ms     | 36 ms        | 0.12 ms   | 1.25 ms   | 1.78 ms          | 2.21 ms                  |
 | 1280×704, 32 × 64 (12 passes) | 37 ms     | 161 ms       | 0.27 ms   | 3.40 ms   | 3.94 ms          | 6.50 ms                  |
 
-The window at its defaults (640×352 world, 32 rays) runs at about 355 fps, or
-460 fps at 16 rays. Each window frame also uploads the scene (0.13 ms) and
-downloads the image (0.22 ms).
+The window at its defaults (640×352 world, 32 rays) runs at about 360 fps, or
+460 fps at 16 rays. Each window frame also uploads the scene (0.14 ms) and
+downloads the image (0.12 ms) through pinned host buffers. The download took
+0.22 ms before [tilekit](./tilekit.md#what-it-bought).
 
 **Everything matches the CPU exactly.** Seeds, distances and nearest-surface
 colors are integer or correctly rounded math, so they match bit for bit, both

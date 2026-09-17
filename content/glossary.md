@@ -103,5 +103,10 @@ offsets. In cuTile it takes a tile of raw pointers and `load_ptr_tko` inside
 **Temporal accumulation**: blending each frame into a running average so noise
 from a few random samples settles over time.
 
+**Pinned (page-locked) memory**: host memory the OS can't swap out or move, so
+the GPU can copy to and from it directly. Transfers from ordinary **pageable**
+memory are staged through a pinned buffer by the driver first. See
+[tilekit](./tilekit.md).
+
 **Parameter buffer**: a small device tensor holding per-frame inputs, so a
 captured CUDA graph can see new values without recapturing.

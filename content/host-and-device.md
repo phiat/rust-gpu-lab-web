@@ -85,6 +85,14 @@ Reading a result back to the CPU is also a DeviceOp:
 let host: Vec<f32> = z.unpartition().to_host_vec().sync_on(&stream)?;
 ```
 
+That's the convenient way, and fine for a one-off result. It allocates a new
+`Vec` every time and copies into ordinary pageable memory, and
+`api::copy_host_vec_to_device` does the same in the other direction, plus a new
+device tensor. For per-frame transfers the demos use a **pinned** host buffer
+that is allocated once and copied to or from an existing tensor. In `filters`
+that took a 4K frame's upload from 4.6 ms to 3.0 ms (see
+[tilekit](./tilekit.md#pinned-buffers)).
+
 Independent ops can overlap on different streams. Ops that depend on each other
 must be chained or placed on the same stream.
 
