@@ -130,3 +130,7 @@ assets/       styles.css; colors come from the crate's cosine palette
 client.ts     loads the stylesheet and wires up copy buttons
 docs/images/  README screenshots
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
