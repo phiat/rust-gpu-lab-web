@@ -139,6 +139,37 @@ function describeSpec(spec: unknown): string {
   return JSON.stringify(spec);
 }
 
+async function loadCrate(root: string, member: string): Promise<Crate> {
+  const dir = join(root, member);
+  const sources: SourceFile[] = [];
+  const [manifest = "", readme] = await Promise.all([
+    readText(join(dir, "Cargo.toml")),
+    readText(join(dir, "README.md")),
+    collectSources(root, join(dir, "src"), sources),
+  ]);
+  const toml = manifest
+    ? parseToml(manifest) as {
+      package?: { name?: string };
+      dependencies?: Record<string, unknown>;
+    }
+    : {};
+  const name = toml.package?.name ?? member;
+  const profiles = ["debug", "release"];
+  const built = await Promise.all(
+    profiles.map((profile) => exists(join(root, "target", profile, name))),
+  );
+  return {
+    name,
+    dir: member,
+    manifest,
+    readme,
+    description: readme ? firstParagraph(readme) : undefined,
+    dependencies: Object.keys(toml.dependencies ?? {}),
+    sources,
+    builtProfiles: profiles.filter((_, i) => built[i]),
+  };
+}
+
 export async function loadWorkspace(): Promise<Workspace> {
   const root = TILEWORLD_DIR;
   const manifest = await readText(join(root, "Cargo.toml"));
@@ -162,37 +193,9 @@ export async function loadWorkspace(): Promise<Workspace> {
   };
   const ws = parsed.workspace ?? {};
 
-  const crates: Crate[] = [];
-  for (const member of ws.members ?? []) {
-    const dir = join(root, member);
-    const crateManifest = (await readText(join(dir, "Cargo.toml"))) ?? "";
-    const crateToml = crateManifest
-      ? parseToml(crateManifest) as {
-        package?: { name?: string };
-        dependencies?: Record<string, unknown>;
-      }
-      : {};
-    const sources: SourceFile[] = [];
-    await collectSources(root, join(dir, "src"), sources);
-    const name = crateToml.package?.name ?? member;
-    const readme = await readText(join(dir, "README.md"));
-    const builtProfiles: string[] = [];
-    for (const profile of ["debug", "release"]) {
-      if (await exists(join(root, "target", profile, name))) {
-        builtProfiles.push(profile);
-      }
-    }
-    crates.push({
-      name,
-      dir: member,
-      manifest: crateManifest,
-      readme,
-      description: readme ? firstParagraph(readme) : undefined,
-      dependencies: Object.keys(crateToml.dependencies ?? {}),
-      sources,
-      builtProfiles,
-    });
-  }
+  const crates = await Promise.all(
+    (ws.members ?? []).map((member) => loadCrate(root, member)),
+  );
 
   const cargoConfig = await readText(join(root, ".cargo", "config.toml"));
   let cudaToolkitPath: string | undefined;

@@ -132,7 +132,7 @@ doesn't register it, and every island on the page stops hydrating until then.
 ```text
 content/      markdown notes
 lib/          wiki loader, markdown + highlighting, workspace reader,
-              mandelbrot and raymarch math for the islands
+              mandelbrot and raymarch math, tile helpers for the islands
 islands/      GridExplorer, TileMandelbrot, LifeStencil, TileRaymarch,
               HeroRender, SearchPalette, ThemeToggle (client-side)
 components/   WikiNav

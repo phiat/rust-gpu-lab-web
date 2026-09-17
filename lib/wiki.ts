@@ -42,19 +42,22 @@ async function readNote(slug: string): Promise<Note | null> {
   };
 }
 
-export async function listNotes(): Promise<NoteMeta[]> {
-  const notes: NoteMeta[] = [];
-  for await (const entry of Deno.readDir(CONTENT_DIR)) {
-    if (!entry.isFile || !entry.name.endsWith(".md")) continue;
-    const note = await readNote(entry.name.slice(0, -3));
-    if (note) {
-      const { body: _body, ...meta } = note;
-      notes.push(meta);
-    }
-  }
-  return notes.sort((a, b) =>
-    a.order - b.order || a.title.localeCompare(b.title)
+/** Every note with its body, in reading order. */
+export async function loadNotes(): Promise<Note[]> {
+  const entries = await Array.fromAsync(Deno.readDir(CONTENT_DIR));
+  const notes = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile && entry.name.endsWith(".md"))
+      .map((entry) => readNote(entry.name.slice(0, -3))),
   );
+  return notes
+    .filter((note) => note !== null)
+    .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+}
+
+/** Every note's front matter, in reading order. */
+export async function listNotes(): Promise<NoteMeta[]> {
+  return (await loadNotes()).map(({ body: _body, ...meta }) => meta);
 }
 
 export function getNote(slug: string): Promise<Note | null> {

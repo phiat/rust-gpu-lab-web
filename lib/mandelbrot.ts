@@ -4,6 +4,8 @@
  * Keep in sync with mandelbrot/src/{main,cpu,palette}.rs.
  */
 
+import type { Tile } from "./tiles.ts";
+
 /** BAILOUT_SQ in main.rs. */
 export const BAILOUT_SQ = 256;
 
@@ -35,46 +37,12 @@ export const LOCATIONS: Location[] = [
   { name: "Mini Mandelbrot", cx: -1.762, cy: 0, span: 0.055, iters: 500 },
 ];
 
-export interface Tile {
-  pid0: number;
-  pid1: number;
-  y0: number;
-  y1: number;
-  x0: number;
-  x1: number;
-}
-
 export interface TileStats {
   tile: Tile;
   /** Largest escape count among pixels that escaped. */
   maxEscape: number;
   /** Some pixel never escaped, so every kernel runs all max_iter steps. */
   anyInside: boolean;
-}
-
-export function makeTiles(h: number, w: number, t: number): Tile[] {
-  const tiles: Tile[] = [];
-  for (let pid0 = 0; pid0 < Math.ceil(h / t); pid0++) {
-    for (let pid1 = 0; pid1 < Math.ceil(w / t); pid1++) {
-      tiles.push({
-        pid0,
-        pid1,
-        y0: pid0 * t,
-        y1: Math.min((pid0 + 1) * t, h),
-        x0: pid1 * t,
-        x1: Math.min((pid1 + 1) * t, w),
-      });
-    }
-  }
-  return tiles;
-}
-
-export function shuffle<T>(items: T[]): T[] {
-  for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [items[i], items[j]] = [items[j], items[i]];
-  }
-  return items;
 }
 
 /** `View::pixel_mapping`: square pixels sampled at their centers. */

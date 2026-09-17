@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import {
-  fillTile,
-  LOCATIONS,
-  makeTiles,
-  renderTile,
-  shuffle,
-} from "../lib/mandelbrot.ts";
+import { fillTile, LOCATIONS, renderTile } from "../lib/mandelbrot.ts";
+import { makeTiles, shuffle } from "../lib/tiles.ts";
 
 const W = 960;
 const H = 600;

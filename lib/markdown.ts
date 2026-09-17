@@ -41,6 +41,22 @@ export function slugify(text: string): string {
     .replace(/\s+/g, "-");
 }
 
+/** Strip inline markdown markers, for showing a heading as plain text. */
+const plainText = (text: string) => text.replace(/[`*_~]/g, "");
+
+/** A document's h2 and h3 headings, with the ids `renderMarkdown` gives them. */
+export function headingsOf(src: string, idPrefix = ""): Heading[] {
+  return new Marked().lexer(src)
+    .filter((token): token is Tokens.Heading =>
+      token.type === "heading" && (token.depth === 2 || token.depth === 3)
+    )
+    .map(({ depth, text }) => ({
+      depth,
+      text: plainText(text),
+      id: idPrefix + slugify(text),
+    }));
+}
+
 export const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -93,7 +109,7 @@ export function renderMarkdown(
   html: string;
   headings: Heading[];
 } {
-  const headings: Heading[] = [];
+  const headings = headingsOf(src, idPrefix);
   const marked = new Marked();
 
   marked.use({
@@ -108,9 +124,6 @@ export function renderMarkdown(
       heading({ tokens, depth, text }) {
         const inner = this.parser.parseInline(tokens);
         const id = idPrefix + slugify(text);
-        if (depth === 2 || depth === 3) {
-          headings.push({ depth, text: text.replace(/[`*_~]/g, ""), id });
-        }
         const level = Math.min(6, depth + headingShift);
         return `<h${level} id="${id}"><a class="anchor" href="#${id}" aria-label="Link to this section">#</a>${inner}</h${level}>\n`;
       },

@@ -4,14 +4,19 @@ import {
   fillTile,
   HOME,
   LOCATIONS,
-  makeTiles,
   renderTile,
-  shuffle,
-  type Tile,
   type TileStats,
   toComplex,
   type View,
 } from "../lib/mandelbrot.ts";
+import {
+  canvasPixel,
+  makeTiles,
+  type Progress,
+  shuffle,
+  strokeTileGrid,
+  type Tile,
+} from "../lib/tiles.ts";
 
 const SIZES = [
   { label: "270 × 480", h: 270, w: 480 },
@@ -23,13 +28,6 @@ const ITERATIONS = [100, 250, 500, 1000, 2000];
 const CHECK_EVERY = [4, 16, 64];
 
 type Order = "shuffled" | "rows";
-
-interface Progress {
-  done: number;
-  total: number;
-  ms: number;
-  running: boolean;
-}
 
 interface Hover {
   tile: Tile;
@@ -130,16 +128,7 @@ export default function TileMandelbrot() {
     if (showGrid) {
       ctx.strokeStyle = "rgba(255, 230, 167, 0.28)";
       ctx.lineWidth = Math.max(1, scale);
-      ctx.beginPath();
-      for (let x = tileSize; x < w; x += tileSize) {
-        ctx.moveTo(x + 0.5, 0);
-        ctx.lineTo(x + 0.5, h);
-      }
-      for (let y = tileSize; y < h; y += tileSize) {
-        ctx.moveTo(0, y + 0.5);
-        ctx.lineTo(w, y + 0.5);
-      }
-      ctx.stroke();
+      strokeTileGrid(ctx, w, h, tileSize);
     }
 
     ctx.lineWidth = Math.max(2, 2 * scale);
@@ -237,15 +226,7 @@ export default function TileMandelbrot() {
     workShare = fixed ? early / fixed : null;
   }
 
-  function pixelAt(e: MouseEvent) {
-    const rect = overlayRef.current!.getBoundingClientRect();
-    const x = Math.floor(((e.clientX - rect.left) / rect.width) * w);
-    const y = Math.floor(((e.clientY - rect.top) / rect.height) * h);
-    return {
-      x: Math.min(Math.max(x, 0), w - 1),
-      y: Math.min(Math.max(y, 0), h - 1),
-    };
-  }
+  const pixelAt = (e: MouseEvent) => canvasPixel(overlayRef.current!, e, w, h);
 
   function onMove(e: MouseEvent) {
     const { x, y } = pixelAt(e);

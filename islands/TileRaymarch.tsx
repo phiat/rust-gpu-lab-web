@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { shuffle } from "../lib/mandelbrot.ts";
 import {
   type Camera,
   DEFAULT_CAMERA,
@@ -17,6 +16,12 @@ import {
   TILE,
   type View,
 } from "../lib/raymarch.ts";
+import {
+  canvasPixel,
+  type Progress,
+  shuffle,
+  strokeTileGrid,
+} from "../lib/tiles.ts";
 
 const SIZES = [
   { label: "180 × 320", h: 180, w: 320 },
@@ -41,13 +46,6 @@ const SLICE_MS = 12;
 const SETTLE_MS = 150;
 const TAU = Math.PI * 2;
 const DEG = 180 / Math.PI;
-
-interface Progress {
-  done: number;
-  total: number;
-  ms: number;
-  running: boolean;
-}
 
 interface Hover {
   x: number;
@@ -173,16 +171,7 @@ export default function TileRaymarch() {
     if (showGrid) {
       ctx.strokeStyle = "rgba(255, 230, 167, 0.3)";
       ctx.lineWidth = Math.max(1, scale);
-      ctx.beginPath();
-      for (let x = TILE; x < w; x += TILE) {
-        ctx.moveTo(x + 0.5, 0);
-        ctx.lineTo(x + 0.5, h);
-      }
-      for (let y = TILE; y < h; y += TILE) {
-        ctx.moveTo(0, y + 0.5);
-        ctx.lineTo(w, y + 0.5);
-      }
-      ctx.stroke();
+      strokeTileGrid(ctx, w, h, TILE);
     }
 
     if (hover) {
@@ -319,15 +308,8 @@ export default function TileRaymarch() {
     }));
   }
 
-  function pixelAt(e: PointerEvent) {
-    const rect = overlayRef.current!.getBoundingClientRect();
-    const x = Math.floor(((e.clientX - rect.left) / rect.width) * w);
-    const y = Math.floor(((e.clientY - rect.top) / rect.height) * h);
-    return {
-      x: Math.min(Math.max(x, 0), w - 1),
-      y: Math.min(Math.max(y, 0), h - 1),
-    };
-  }
+  const pixelAt = (e: PointerEvent) =>
+    canvasPixel(overlayRef.current!, e, w, h);
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
