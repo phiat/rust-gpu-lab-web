@@ -1,6 +1,6 @@
 import { HttpError } from "fresh";
 import { define } from "../../../utils.ts";
-import { renderPath } from "../../../lib/tileworld.ts";
+import { imageType, renderPath } from "../../../lib/tileworld.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -10,7 +10,7 @@ export const handler = define.handlers({
       const file = await Deno.open(path, { read: true });
       return new Response(file.readable, {
         headers: {
-          "content-type": "image/png",
+          "content-type": imageType(path)!,
           "cache-control": "no-cache",
         },
       });

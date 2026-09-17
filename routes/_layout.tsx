@@ -47,8 +47,10 @@ export default define.layout(function Layout({ Component, url }) {
           A notebook for learning{" "}
           <a href="https://github.com/NVlabs/cutile-rs">cuTile Rust</a>. Notes
           are markdown files in{" "}
-          <code>content/</code>; the project page reads the tileworld workspace
-          from disk.
+          <code>content/</code>; the project page reads the{" "}
+          <a href="https://github.com/phiat/rust-gpu-lab">rust-gpu-lab</a>{" "}
+          workspace from disk.{" "}
+          <a href="https://github.com/phiat/rust-gpu-lab-web">Site source</a>.
         </p>
       </footer>
     </div>

@@ -179,7 +179,9 @@ export default define.page(async function Project() {
                           <figcaption>
                             <code>{r.name}</code>
                             <span>
-                              {(r.bytes / 1024 / 1024).toFixed(1)} MB
+                              {r.bytes < 1024 * 1024
+                                ? `${Math.round(r.bytes / 1024)} KB`
+                                : `${(r.bytes / 1024 / 1024).toFixed(1)} MB`}
                               {!dir && `, ${timeAgo(r.modified)}`}
                             </span>
                           </figcaption>

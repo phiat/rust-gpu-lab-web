@@ -10,7 +10,8 @@ driver. When kernels are fast, that overhead can be most of the work. A **CUDA
 graph** records a sequence of GPU work once and replays it with a single driver
 call.
 
-Tutorial 10 in the book covers this. Both `life` and `filters` use it.
+Tutorial 10 in the book covers this. `life`, `filters`, `raymarch` and `light2d`
+all use it.
 
 ## Capture and replay
 
@@ -69,18 +70,23 @@ pub fn upload(&mut self, padded_rgba: Vec<u8>) -> Result<(), Error> {
   A recorded step always reads and writes the same buffers, so the graph records
   pairs: front → back → front. Generations per launch are even, and the result
   always ends in `front`.
-- **Compile before capturing.** Both crates run the chain eagerly once first, so
-  the JIT compile happens outside the capture.
+- **Compile before capturing.** `life` and `filters` run the chain eagerly once
+  first, so the JIT compile happens outside the capture.
 - **Scalars are baked in too.** `raymarch` keeps its camera and animation in a
   32-slot device buffer instead of kernel scalars, and copies new values in
   before each replay. Its step budgets are loop bounds, so they stay scalars,
   and changing quality recaptures the graph.
+- **Two graphs when a buffer's role alternates.** `light2d` averages frames by
+  reading last frame's radiance buffer and writing the other one. A graph bakes
+  in which is which, so it captures an even-frame graph and an odd-frame graph
+  and alternates between them.
 - **Recording didn't advance the state.** In `life`'s benchmark, the world after
   `launches × gens` replays matched the CPU after exactly that many generations.
 - **Reading a buffer the graph keeps writing** uses `.dup().to_host_vec()`,
   because `to_host_vec()` consumes the tensor.
-- **One pipeline, both ways.** `filters` writes its chain once against a small
-  trait. `Eager` syncs each op, and the graph `Scope` records it:
+- **One pipeline, both ways.** `filters` and `light2d` write their chains once
+  against a small trait. `Eager` syncs each op, and the graph `Scope` records
+  it:
 
 ```rust
 pub trait Submit {
@@ -100,11 +106,13 @@ SUPER, per generation or frame:
 | `life` 4096², tile 64            | 0.352 ms | 0.332 ms | 1.06×   |
 | `filters` 4K, 6 kernels, tile 32 | 0.76 ms  | 0.64 ms  | 1.2×    |
 | `raymarch` 1080p, 1 kernel       | 3.19 ms  | 3.17 ms  | 1.01×   |
+| `light2d` 640×352, 16 kernels    | 1.14 ms  | 0.65 ms  | 1.75×   |
 
 The fewer and heavier the kernels, the less there is to save: a `raymarch` frame
-is a single launch. At 4096² `life`'s kernel itself dominates. `life`'s README
-estimates about 500 GB/s of memory traffic against the card's 672 GB/s
-bandwidth, so launch overhead barely matters there.
+is a single launch, while a `light2d` frame is 16 and saves about 0.5 ms. At
+4096² `life`'s kernel itself dominates. `life`'s README estimates about 500 GB/s
+of memory traffic against the card's 672 GB/s bandwidth, so launch overhead
+barely matters there.
 
 The book's rule of thumb: use a graph when the same ops repeat many times with
 the same shapes. Skip it when shapes or control flow change per iteration, or

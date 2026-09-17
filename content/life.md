@@ -12,7 +12,8 @@ on the GPU, and through the graph, then checks all three worlds match cell for
 cell.
 
 The ideas behind it have their own notes: [Stencils](./stencils.md) and
-[CUDA graphs](./cuda-graphs.md).
+[CUDA graphs](./cuda-graphs.md). [light2d](./light2d.md) later reuses the same
+offset split for jumps of up to 512 pixels.
 
 ## Running it
 

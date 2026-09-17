@@ -58,6 +58,25 @@ Grid:            (ceil(128/32), ceil(256/64), 1) = (4, 4, 1)
 For an image stored row-major as `[height, width]`, that means `program_id(0)`
 is the **tile row** and `program_id(1)` is the **tile column**.
 
+## Partial tiles at the edges
+
+When a dimension isn't a multiple of the tile size, the grid rounds up and the
+last tiles hang off the end. A 720-row image with 32-row tiles gets 23 tile
+rows, and the last one covers only 16 real rows. Kernel code still sees full
+32×32 tiles, and cuTile handles the overhang:
+
+- **Stores are masked.** Elements past the end are never written.
+- **Loads zero-pad.** Elements past the end read as 0.
+- **Out-of-range block indices assert.** Loading block `[i, j]` from a
+  device-side partition where the block doesn't exist is a runtime error, not a
+  zero tile.
+
+`light2d` builds its edge handling on these rules: it encodes "no seed" as 0 so
+padding reads correctly, and clamps block indices before loading (see
+[Project: light2d](./light2d.md#edges-from-padding-rules-not-branches)). The
+overhanging pixels still cost work: `raymarch` marches all 32×32 rays in every
+edge tile.
+
 ## Program ids
 
 Every program runs the same code with different coordinates:

@@ -47,7 +47,7 @@ export interface Workspace {
 }
 
 export interface Render {
-  /** Path relative to the workspace root, e.g. `filters-out/edges.png`. */
+  /** Path relative to the workspace root, e.g. `docs/images/life.png`. */
   path: string;
   /** Containing folder relative to the root; "" for the root itself. */
   dir: string;
@@ -245,19 +245,44 @@ export function timeAgo(ms: number, now = Date.now()): string {
 }
 
 const SEGMENT = /^[\w-][\w.-]*$/;
-const SKIP_DIRS = new Set(["target", "src"]);
+const SKIP_DIRS = new Set(["target", "src", "node_modules"]);
+const IMAGE_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+};
+
+/** The content type for a render's file name, or undefined if it isn't one. */
+export function imageType(name: string): string | undefined {
+  return IMAGE_TYPES[name.slice(name.lastIndexOf(".") + 1).toLowerCase()];
+}
 
 /** Output order for known pipeline stages; anything else sorts after. */
 const STAGES = ["input", "gray", "blurred", "edges"];
 
 function stageRank(name: string): number {
-  const i = STAGES.indexOf(name.replace(/\.png$/, ""));
+  const i = STAGES.indexOf(name.replace(/\.\w+$/, ""));
   return i === -1 ? STAGES.length : i;
 }
 
-async function pngsIn(dir: string, rel: string, out: Render[]) {
+const isFolder = (entry: Deno.DirEntry) =>
+  entry.isDirectory && !entry.name.startsWith(".") &&
+  !SKIP_DIRS.has(entry.name) && SEGMENT.test(entry.name);
+
+/** Images directly in `dir`, then in its subfolders down to `depth` levels. */
+async function imagesIn(
+  dir: string,
+  rel: string,
+  depth: number,
+  out: Render[],
+) {
   for await (const entry of Deno.readDir(dir)) {
-    if (!entry.isFile || !entry.name.endsWith(".png")) continue;
+    if (isFolder(entry) && depth > 0) {
+      const sub = rel ? `${rel}/${entry.name}` : entry.name;
+      await imagesIn(join(dir, entry.name), sub, depth - 1, out);
+      continue;
+    }
+    if (!entry.isFile || !imageType(entry.name)) continue;
     if (!SEGMENT.test(entry.name)) continue;
     const info = await Deno.stat(join(dir, entry.name));
     out.push({
@@ -271,21 +296,15 @@ async function pngsIn(dir: string, rel: string, out: Render[]) {
 }
 
 /**
- * PNGs in the workspace root and in its top-level output folders (such as
- * `filters-out/`). Renders are gitignored, so they only exist locally.
- * Root renders come newest first; files inside a folder keep pipeline order.
+ * PNG and JPEG images in the workspace root and up to two folders deep: output
+ * folders such as `filters-out/` (gitignored, so local only) and the README
+ * screenshots in `docs/images/`. Root renders come newest first; files inside a
+ * folder keep pipeline order.
  */
 export async function listRenders(): Promise<Render[]> {
   const renders: Render[] = [];
   try {
-    await pngsIn(TILEWORLD_DIR, "", renders);
-    for await (const entry of Deno.readDir(TILEWORLD_DIR)) {
-      if (
-        !entry.isDirectory || entry.name.startsWith(".") ||
-        SKIP_DIRS.has(entry.name) || !SEGMENT.test(entry.name)
-      ) continue;
-      await pngsIn(join(TILEWORLD_DIR, entry.name), entry.name, renders);
-    }
+    await imagesIn(TILEWORLD_DIR, "", 2, renders);
   } catch {
     // Workspace missing: no renders.
   }
@@ -310,11 +329,11 @@ export function groupRenders(renders: Render[]): [string, Render[]][] {
   );
 }
 
-/** Resolve a render path from a URL, allowing at most one folder level. */
+/** Resolve a render path from a URL, allowing at most two folder levels. */
 export function renderPath(path: string): string | null {
   const parts = path.split("/");
-  if (parts.length > 2 || !parts.every((p) => SEGMENT.test(p))) return null;
-  if (!path.endsWith(".png") || SKIP_DIRS.has(parts[0])) return null;
+  if (parts.length > 3 || !parts.every((p) => SEGMENT.test(p))) return null;
+  if (!imageType(path) || parts.some((p) => SKIP_DIRS.has(p))) return null;
   return join(TILEWORLD_DIR, ...parts);
 }
 

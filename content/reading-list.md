@@ -29,8 +29,9 @@ The published book is at <https://nvlabs.github.io/cutile-rs/>, but it tracks
 10. **CUDA graphs**
 11. **Inference with NVFP4/MXFP8**: low-precision formats
 
-1–5 cover what the Mandelbrot project needs. 10 is the background for `life` and
-`filters`, which both capture their kernels as a graph.
+1–5 cover what the Mandelbrot project needs. 9 is the background for `light2d`'s
+gathers through raw pointers. 10 is the background for `life`, `filters`,
+`raymarch` and `light2d`, which all capture their kernels as a graph.
 
 ## Guides
 

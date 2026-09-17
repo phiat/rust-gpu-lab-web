@@ -7,19 +7,20 @@ section: Start here
 
 **tileworld** is a Rust workspace for learning
 [cuTile Rust](https://github.com/NVlabs/cutile-rs) (`cutile-rs`), NVIDIA Labs'
-tile-based way of writing GPU kernels in ordinary Rust. This site is its
+tile-based way of writing GPU kernels in ordinary Rust. It's on GitHub as
+[rust-gpu-lab](https://github.com/phiat/rust-gpu-lab). This site is its
 notebook: concept notes, interactive demos, and a live view of the workspace.
 
 ## The workspace
 
 | Piece                 | Value                                                                         |
 | --------------------- | ----------------------------------------------------------------------------- |
-| Crates                | `mandelbrot`, `life`, `filters`, `raymarch`                                   |
+| Crates                | `mandelbrot`, `life`, `filters`, `raymarch`, `light2d`                        |
 | Rust                  | edition 2021, `rust-version = "1.89"` (stable, no nightly)                    |
 | `cutile`, `cuda-core` | git, pinned to rev `d92c160`                                                  |
 | Other deps            | `clap`, `rayon`, `image` (PNG and JPEG), `minifb` (X11 only, for the windows) |
 | CUDA                  | `.cargo/config.toml` sets `CUDA_TOOLKIT_PATH` to CUDA 13.3                    |
-| History               | a git repo, one commit per crate                                              |
+| History               | one commit per crate, then the top-level README and its screenshots           |
 
 Each crate has a CPU reference in `cpu.rs`, the cuTile version in `gpu.rs`, and
 a `bench` command that checks the two agree before timing them.
@@ -34,7 +35,22 @@ stays current as the workspace grows.
 
 ## Requirements
 
-From the upstream README at `d92c160`:
+From the workspace README:
+
+- **An NVIDIA GPU** with compute capability 8.0 or newer (Ampere, Ada, Hopper,
+  Blackwell).
+- **CUDA Toolkit 13.2 or newer** (13.3 recommended), which provides the
+  `tileiras` compiler cuTile uses.
+- **Rust 1.89 or newer**, stable.
+- **Linux.** Tested on WSL2 with Ubuntu 24.04.
+- **An X11 display** for the windowed demos (`life`, `raymarch`, `light2d`). On
+  WSL2, WSLg provides one.
+
+`.cargo/config.toml` points `CUDA_TOOLKIT_PATH` at `/usr/local/cuda-13.3`. If
+your toolkit is elsewhere, edit that file or export the variable yourself: Cargo
+doesn't override a variable that's already set.
+
+The toolkit minimums per architecture, from the upstream README at `d92c160`:
 
 | GPU compute capability | Minimum CUDA Toolkit |
 | ---------------------- | -------------------- |
@@ -45,9 +61,9 @@ From the upstream README at `d92c160`:
 CUDA 13.3 is recommended; GPUs below `sm_80` are unsupported. The Project page
 probes `nvidia-smi` so you can check your compute capability against this table.
 
-> Upstream tests on Ubuntu 24.04. If you run tileworld under WSL2, the NVIDIA
-> driver lives on the Windows side; that setup isn't something upstream claims
-> to test.
+> Upstream tests on Ubuntu 24.04. tileworld is developed under WSL2, where the
+> NVIDIA driver lives on the Windows side, a setup upstream doesn't claim to
+> test.
 
 ## Running things
 
@@ -62,10 +78,38 @@ cargo run --release -p filters -- run                  # → filters-out/*.png
 cargo run --release -p filters -- bench
 cargo run --release -p raymarch -- run                 # window; first start compiles for ~30 s
 cargo run --release -p raymarch -- bench
+cargo run --release -p light2d -- run                  # paint lights and walls in a window
+cargo run --release -p light2d -- check                # jump flood vs exact distance transform
+cargo run --release -p <crate> -- --help               # every command and option
 ```
 
+The first run of each demo JIT compiles its kernels. That takes under a second
+for `mandelbrot` and about 30 s for `raymarch`. `raymarch` and `light2d` save
+compiled kernels to `~/.cache/cutile/kernels`, so later runs start in a few
+seconds (see [Compilation](./compilation.md)).
+
 More flags are in each project note: [mandelbrot](./mandelbrot.md),
-[life](./life.md), [filters](./filters.md) and [raymarch](./raymarch.md).
+[life](./life.md), [filters](./filters.md), [raymarch](./raymarch.md) and
+[light2d](./light2d.md).
+
+## Where each idea is taught
+
+The workspace README maps topics to crates. Here is the same map, with the notes
+that explain each topic:
+
+| Topic                                                                      | Crates                       | Notes                                                                         |
+| -------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------- |
+| Thinking in tile programs instead of pixel threads; masking with `select`  | `mandelbrot`                 | [Partitioning](./partitioning-and-the-grid.md), [mandelbrot](./mandelbrot.md) |
+| Per-tile early exit, and why the loop shape decides whether it pays off    | `mandelbrot`, `raymarch`     | [mandelbrot](./mandelbrot.md), [raymarch](./raymarch.md)                      |
+| Stencils that read neighbors: view shift plus block offset, ghost tiles    | `life`, `light2d`            | [Stencils](./stencils.md), [life](./life.md)                                  |
+| "Valid" convolutions that need no block arithmetic at all                  | `filters`                    | [Stencils](./stencils.md), [filters](./filters.md)                            |
+| CUDA graphs: ping-pong buffers, no allocation, when they pay off           | `life`, `filters`, `light2d` | [CUDA graphs](./cuda-graphs.md)                                               |
+| One `Submit` trait so the same pipeline runs eagerly or records a graph    | `filters`, `light2d`         | [CUDA graphs](./cuda-graphs.md), [filters](./filters.md)                      |
+| A whole shading pipeline in one kernel, with parameters in a device buffer | `raymarch`                   | [raymarch](./raymarch.md)                                                     |
+| Data-dependent reads through `unsafe` pointer gathers                      | `light2d`                    | [light2d](./light2d.md)                                                       |
+| JIT costs: compile time, the disk cache, specialization on divisibility    | `raymarch`, `light2d`        | [Compilation](./compilation.md)                                               |
+| The generic tile shape type bug, and writing literal shapes to avoid it    | `filters`, `raymarch`        | [filters](./filters.md), [raymarch](./raymarch.md)                            |
+| Matching float kernels to the CPU (within 1/255, then exactly)             | `raymarch`, `light2d`        | [raymarch](./raymarch.md), [light2d](./light2d.md)                            |
 
 To check that the toolchain works end to end, run the upstream hello world from
 a clone of `cutile-rs` checked out at the same rev:

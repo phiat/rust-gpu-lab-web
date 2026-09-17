@@ -40,7 +40,8 @@ Calling it returns a `DeviceOp`.
 streams may overlap.
 
 **Static / dynamic dimension**: a compile-time constant dimension, or `-1`
-resolved at runtime. Only static ones can force a recompile.
+resolved at runtime. A static dim is part of the specialization; a dynamic one
+only counts through its power-of-two divisibility.
 
 **Specialization**: one compiled kernel variant for one entry function, one GPU
 architecture, and one set of compile-time inputs.
@@ -83,6 +84,24 @@ scene from them.
 
 **Sphere tracing**: marching a ray forward by the SDF value at each step, which
 can't overshoot a surface when the SDF is a true lower bound.
+
+**Partial tile**: an edge tile that hangs past the end of a tensor whose size
+isn't a multiple of the tile size. Stores there are masked and loads read 0.
+
+**Jump flooding (JFA)**: building a nearest-seed map in about log₂(size) passes.
+Each pass at jump `k` checks the seeds held `k` pixels away in 9 directions,
+then `k` halves. **JFA+1** adds one more pass at 1 to fix most errors. See
+[Project: light2d](./light2d.md).
+
+**Distance field**: each pixel's distance to the nearest occupied pixel. The map
+of which surface is nearest is a **Voronoi diagram**.
+
+**Gather**: reading input at computed, per-element indices instead of fixed
+offsets. In cuTile it takes a tile of raw pointers and `load_ptr_tko` inside
+`unsafe`.
+
+**Temporal accumulation**: blending each frame into a running average so noise
+from a few random samples settles over time.
 
 **Parameter buffer**: a small device tensor holding per-frame inputs, so a
 captured CUDA graph can see new values without recapturing.

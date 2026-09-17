@@ -56,11 +56,12 @@ export default function HeroRender() {
         ctx.putImageData(image, 0, 0);
 
         // Reduced motion: paint everything at once, and don't loop.
-        const queue = reduceMotion ? tiles : shuffle([...tiles]);
+        const queue = reduceMotion ? [...tiles] : shuffle([...tiles]);
+        const total = tiles.length;
         let done = 0;
         let elapsed = 0;
         let last = performance.now();
-        setStatus({ name: loc.name, done, total: tiles.length });
+        setStatus({ name: loc.name, done, total });
 
         while (queue.length && !cancelled) {
           if (paused()) {
@@ -73,13 +74,13 @@ export default function HeroRender() {
           last = now;
           const due = reduceMotion
             ? queue.length
-            : Math.max(1, Math.ceil((elapsed / FILL_MS) * tiles.length) - done);
+            : Math.max(1, Math.ceil((elapsed / FILL_MS) * total) - done);
           for (const t of queue.splice(0, due)) {
             renderTile(image.data, W, H, t, loc, loc.iters);
             ctx.putImageData(image, 0, 0, t.x0, t.y0, t.x1 - t.x0, t.y1 - t.y0);
             done++;
           }
-          setStatus({ name: loc.name, done, total: tiles.length });
+          setStatus({ name: loc.name, done, total });
           await frame();
         }
         if (reduceMotion) break;

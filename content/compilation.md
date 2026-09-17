@@ -55,7 +55,7 @@ cutile::jit_cache::enable_default()?; // ~/.cache/cutile/kernels, 2 GiB LRU
 ```
 
 See `cutile-examples/examples/jit_disk_cache.rs`. Run it twice and the second
-run loads from disk. `raymarch` passes the store explicitly:
+run loads from disk. `raymarch` and `light2d` pass the store explicitly:
 
 ```rust
 cutile::jit_cache::enable(std::sync::Arc::new(
@@ -76,6 +76,11 @@ surface normal with 4 separate calls to the scene SDF took 48 s in `tileiras`.
 The same 4 samples inside a `for` loop took 26 s, because the loop body inlines
 the scene once. Building the IR also costs about 1.4 s on every start, even on a
 cache hit.
+
+That IR cost is per variant. `light2d` compiles 15 kernels, 10 of them
+divisibility variants of one jump flooding kernel, and each costs about 270–320
+ms of IR building at startup. With every compiled kernel on disk, it still takes
+about 4 s to reach the first frame.
 
 Tile size matters too. `mandelbrot`'s first launch took about 1 s to compile at
 128 px tiles and 12 s at 256 px.
@@ -113,6 +118,8 @@ runs. These JIT-time errors came up while building tileworld's crates:
 | "Return type required"                                | an untyped nested call, like `gt_tile(x, constant(…))`       | bind the inner value to an annotated `let`                             |
 | "missing attribute 'overflow'"                        | `trunci(x, overflow::None)`                                  | use `overflow::NoWrap` (or another real mode)                          |
 | "unrecognized macro `unreachable`"                    | scalar `.broadcast(shape)` on a literal or local `let`       | broadcast an entry parameter, or use `constant(v, shape)`              |
+| "duplicate functions are not supported"               | a device function named like a DSL op, such as `unpack`      | rename the helper                                                      |
+| "Failed to get type parameters for convert_tile"      | `convert_tile(…)` as a function's tail expression            | bind the result to an annotated `let`, then return it                  |
 
 The [filters gotchas](./filters.md#gotchas-at-d92c160) explain the tile-type
 mismatch in more detail.

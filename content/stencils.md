@@ -1,6 +1,6 @@
 ---
 title: Stencils
-summary: Reading neighboring elements when a tile program only sees its own block, and the two ways tileworld does it.
+summary: Reading neighboring elements when a tile program only sees its own block. Valid convolutions, split offsets at any distance, and gathers when no offset fits.
 order: 6
 section: Concepts
 ---
@@ -111,6 +111,42 @@ let p_ul = ul.partition(shape![B, B]);
 let t_ul: Tile<u8, { [B, B] }> = p_ul.load([up, left]);
 ```
 
+## The same split at any distance (`light2d`)
+
+Nothing in the split limits `d` to ±1. `light2d`'s jump flooding reads offsets
+of ±512, ±256, … ±1 with one kernel, and passes the block offsets `q` as
+scalars:
+
+| Offset `d`         | View shifted by | Loaded at block |
+| ------------------ | --------------- | --------------- |
+| `−k`, for `k ≥ 32` | 0               | `i − k/32`      |
+| `+k`, for `k ≥ 32` | 0               | `i + k/32`      |
+| `−k`, for `k < 32` | `32 − k`        | `i − 1`         |
+| `+k`, for `k < 32` | `k`             | `i`             |
+
+Its world doesn't wrap, so the edges work differently from `life`'s:
+
+- **A leading ghost ring only.** Block `i − 1` has to exist for the first real
+  tile. Past the far edge, the shifted views end early, and their partial tiles
+  read zeros.
+- **Clamp, then choose.** A block index outside the partition asserts at
+  runtime, so the kernel clamps it, loads, and swaps in zeros with a scalar `if`
+  when the real block was out of range.
+- **Zero means "nothing there".** Seeds are encoded so that 0 is farther away
+  than any real seed, so padding needs no special case.
+
+[Project: light2d](./light2d.md#long-range-stencils-lifes-split-at-any-distance)
+has the code.
+
+## When no fixed offset works: gathers
+
+Every strategy above reads at offsets known before launch. A ray marching
+through a distance field reads wherever it has got to, which differs per pixel
+and per step. `light2d` handles that with a **gather**: a tile of raw pointers,
+`tensor.as_ptr()` offset by computed flat indices, loaded with `load_ptr_tko`
+inside `unsafe`. The kernel has to keep every index in bounds itself, which it
+does by clamping. See [Gathers](./light2d.md#gathers-the-unsafe-escape-hatch).
+
 ## Choosing between them
 
 |                  | Valid convolution         | Offset split and ghost ring           |
@@ -119,7 +155,7 @@ let t_ul: Tile<u8, { [B, B] }> = p_ul.load([up, left]);
 | Border           | host pads once            | ghost tiles, recomputed each step     |
 | Loading          | `view.load_like(out)`     | device-side `partition` + `load([…])` |
 | Block arithmetic | none                      | alias ghost indices, subtract 1       |
-| In tileworld     | `filters`                 | `life`                                |
+| In tileworld     | `filters`                 | `life`, and `light2d` at long range   |
 
 The [Playground](/playground) runs the `life` kernel in the browser. Hover a
 tile program to see the blocks its views load.
