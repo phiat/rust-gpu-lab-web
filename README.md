@@ -66,10 +66,6 @@ read from disk on each request.
 
 ![Project page with the toolchain probe and commit history](docs/images/project.png)
 
-**On a phone.** The stencils note at 390 px wide.
-
-<img src="docs/images/mobile-stencils.png" alt="The stencils note on a phone, dark theme" width="320">
-
 ## Notes
 
 Each note is `content/<slug>.md` with front matter:
