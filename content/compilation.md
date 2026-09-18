@@ -46,6 +46,13 @@ base pointer. Values such as 16, 32, 64 and 1024 share a bucket, while 100
 jump-flooding kernel compiles into 10 variants this way, because its passes
 differ in block offsets and view shifts (16, 8, 4, 2, 1).
 
+The same rule caught `sand`: passing the Margolus pass index (0, 1, 2, 3) as an
+`i32` argument compiled its 2.4 s `step` kernel three times, for pass 0, the odd
+passes, and 2. The fix is to keep per-launch integers in a small tensor and
+slice a view per launch, which the JIT doesn't inspect, and which is also what a
+CUDA graph needs. See
+[sand](./sand.md#passing-per-launch-integers-without-jit-variants).
+
 ## Disk cache (opt-in)
 
 Off by default, and no environment variable turns it on:
@@ -67,14 +74,17 @@ pub fn enable_jit_cache() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-| Demo                            | First start      | Later runs  |
-| ------------------------------- | ---------------- | ----------- |
-| `mandelbrot`, `life`, `filters` | about 0.75–0.9 s | about 0.3 s |
-| `raymarch`                      | about 30 s       | about 1.5 s |
-| `light2d`, 15 kernels           | 15 compiles      | about 4 s   |
+| Demo                            | First start        | Later runs  |
+| ------------------------------- | ------------------ | ----------- |
+| `mandelbrot`, `life`, `filters` | about 0.75–0.9 s   | about 0.3 s |
+| `raymarch`                      | about 30 s         | about 1.5 s |
+| `light2d`, 15 kernels           | 15 compiles        | about 4 s   |
+| `sand`, 4 kernels               | `step` alone 1.7 s | about 2.2 s |
 
 A hit skips `tileiras` but not the IR build, which costs 40–300 ms per kernel
-variant on every start. That's why `light2d` still takes seconds.
+variant on every start. That's why `light2d` still takes seconds, and why `sand`
+barely gains: its one big `step` kernel spends 1.7 s in the stage before
+`tileiras`.
 
 `raymarch`'s kernel takes about 30 s to compile the first time and about 1.5 s
 to start after that. Any edit to the kernel changes the cache key. Its step
@@ -97,6 +107,14 @@ about 4 s to reach the first frame.
 
 Tile size matters too. `mandelbrot`'s first launch took about 1 s to compile at
 128 px tiles and 12 s at 256 px.
+
+Op count matters most, and it's the same count that decides the frame time.
+`sand`'s `step` kernel went from 2.4 s and 0.5 ms per frame to 1.7 s and 0.21 ms
+by writing its rules smaller: bit-mask tables instead of
+`kind == X || kind
+== Y` chains, the density table packed into one constant, and
+`kind()` hoisted out of the rules. See
+[sand](./sand.md#compile-time-is-run-time).
 
 ## Seeing what the compiler did
 

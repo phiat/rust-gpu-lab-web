@@ -70,7 +70,8 @@ elements. See [Stencils](./stencils.md).
 output is smaller than its input by twice the radius.
 
 **Ghost tile**: a padding tile around the world whose program computes the
-interior tile on the opposite edge, which keeps a wrapping world correct.
+interior tile on the opposite edge, which keeps a wrapping world correct. In
+`sand` the ring is a wall instead, and is never updated.
 
 **CUDA graph**: a recorded sequence of GPU work replayed with one driver call.
 See [CUDA graphs](./cuda-graphs.md).
@@ -110,3 +111,13 @@ memory are staged through a pinned buffer by the driver first. See
 
 **Parameter buffer**: a small device tensor holding per-frame inputs, so a
 captured CUDA graph can see new values without recapturing.
+
+**Margolus neighborhood**: a block cellular automaton scheme. The grid is split
+into 2×2 blocks, each block updates on its own, and the partition shifts by one
+cell on alternate passes. Cells can move without two of them ever being written
+to the same place. See [Project: sand](./sand.md).
+
+**Hashed randomness**: a per-cell or per-block random word computed as an
+integer hash of coordinates and a per-pass salt, since kernels have no RNG. A
+CPU running the same hash gets the same bits, so the results can be compared
+exactly. `sand` uses lowbias32.

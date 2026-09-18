@@ -93,7 +93,13 @@ pub fn upload(&mut self) -> Result<(), Error> {
 - **Two graphs when a buffer's role alternates.** `light2d` averages frames by
   reading last frame's radiance buffer and writing the other one. A graph bakes
   in which is which, so it captures an even-frame graph and an odd-frame graph
-  and alternates between them.
+  and alternates between them. `sand` does the same for its two world buffers: a
+  frame's paint step plus an even number of passes ends in the other buffer from
+  where it started, so even and odd frames each get a graph.
+- **A per-launch integer as a view, not a scalar.** `sand`'s pass number is a
+  `[4]` slice of a small device tensor. A graph replays each launch with its own
+  slice, and the JIT compiles one variant instead of specializing on the
+  scalar's divisibility.
 - **Recording didn't advance the state.** In `life`'s benchmark, the world after
   `launches × gens` replays matched the CPU after exactly that many generations.
 - **Reading a buffer the graph keeps writing.** `to_host_vec()` consumes its
@@ -123,6 +129,8 @@ SUPER, per generation or frame:
 | `life` 4096², tile 64            | 0.352 ms | 0.332 ms | 1.06×   |
 | `filters` 4K, 6 kernels, tile 32 | 0.76 ms  | 0.64 ms  | 1.2×    |
 | `raymarch` 1080p, 1 kernel       | 3.19 ms  | 3.17 ms  | 1.01×   |
+| `sand` 640×352, 6 kernels        | 0.356 ms | 0.231 ms | 1.5×    |
+| `sand` 1920×1088, 6 kernels      | 1.28 ms  | 1.10 ms  | 1.16×   |
 | `light2d` 640×352, 16 kernels    | 1.14 ms  | 0.65 ms  | 1.75×   |
 
 The fewer and heavier the kernels, the less there is to save: a `raymarch` frame

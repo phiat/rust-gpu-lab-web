@@ -60,3 +60,16 @@ Run these from a `cutile-rs` clone with
 | `autotune`       | picking tile sizes                    |
 | `jit_disk_cache` | run twice to see cold vs warm start   |
 | `cuda_graphs`    | graph capture with `CudaGraph::scope` |
+
+## Beyond the book
+
+Background for [sand](./sand.md):
+
+- [Block cellular automaton](https://en.wikipedia.org/wiki/Block_cellular_automaton)
+  (Wikipedia): the Margolus neighborhood and why shifting the partition makes
+  blocks talk to each other.
+- [Prospecting for Hash Functions](https://nullprogram.com/blog/2018/07/31/)
+  (Chris Wellons): where `lowbias32` comes from.
+- [Exploring the Tech and Design of Noita](https://www.youtube.com/watch?v=prXuyMCgbTc)
+  (GDC 2019): the falling sand game `sand` takes its element rules and its
+  rigid-body idea from.

@@ -156,3 +156,6 @@ memory bandwidth. Memory traffic, not compute, looks like the limit.
 - Load RLE patterns, such as a Gosper glider gun wrapping around the torus.
 - Pack 8 cells per byte to cut the memory traffic that limits large worlds.
 - Try a particle simulation to exercise float kernels instead of `u8` stencils.
+
+[sand](./sand.md) took the nine views and the ghost ring from here and made the
+cells move.
