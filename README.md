@@ -142,6 +142,7 @@ assets/       styles.css; colors come from the crate's cosine palette
 client.ts     loads the stylesheet and wires up copy buttons
 static/       favicon, and images that notes embed
 docs/images/  README screenshots
+docs/ideas.md what the site could do next
 ```
 
 ## License
