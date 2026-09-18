@@ -73,3 +73,12 @@ Background for [sand](./sand.md):
 - [Exploring the Tech and Design of Noita](https://www.youtube.com/watch?v=prXuyMCgbTc)
   (GDC 2019): the falling sand game `sand` takes its element rules and its
   rigid-body idea from.
+
+Background for [cloth](./cloth.md):
+
+- [Position Based Dynamics](https://matthias-research.github.io/pages/publications/posBasedDyn.pdf)
+  (Müller, Heidelberger, Hennix, Ratcliff, 2006): the solver, and why moving
+  positions directly is stable.
+- [Long Range Attachments](https://matthias-research.github.io/pages/publications/sca2012cloth.pdf)
+  (Kim, Chentanez, Müller, 2012): the anchor clamp that keeps the curtain from
+  sagging.

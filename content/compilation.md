@@ -53,6 +53,12 @@ slice a view per launch, which the JIT doesn't inspect, and which is also what a
 CUDA graph needs. See
 [sand](./sand.md#passing-per-launch-integers-without-jit-variants).
 
+Shapes count too. `cloth`'s constraint kernel takes two shifted views whose
+offsets differ per batch (−1 row, +2 columns, a diagonal), and views of
+different shapes would have meant several variants. It slices every view to one
+shape and loads them all at the same block, so one kernel serves every
+direction. See [cloth](./cloth.md#one-kernel-whatever-the-direction).
+
 ## Disk cache (opt-in)
 
 Off by default, and no environment variable turns it on:
@@ -74,12 +80,13 @@ pub fn enable_jit_cache() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-| Demo                            | First start        | Later runs  |
-| ------------------------------- | ------------------ | ----------- |
-| `mandelbrot`, `life`, `filters` | about 0.75–0.9 s   | about 0.3 s |
-| `raymarch`                      | about 30 s         | about 1.5 s |
-| `light2d`, 15 kernels           | 15 compiles        | about 4 s   |
-| `sand`, 4 kernels               | `step` alone 1.7 s | about 2.2 s |
+| Demo                            | First start        | Later runs   |
+| ------------------------------- | ------------------ | ------------ |
+| `mandelbrot`, `life`, `filters` | about 0.75–0.9 s   | about 0.3 s  |
+| `raymarch`                      | about 30 s         | about 1.5 s  |
+| `light2d`, 15 kernels           | 15 compiles        | about 4 s    |
+| `sand`, 4 kernels               | `step` alone 1.7 s | about 2.2 s  |
+| `cloth`, 4 kernels              |                    | about 0.75 s |
 
 A hit skips `tileiras` but not the IR build, which costs 40–300 ms per kernel
 variant on every start. That's why `light2d` still takes seconds, and why `sand`

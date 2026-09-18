@@ -210,6 +210,7 @@ let pass_view = self.pass_table.slice(std::slice::from_ref(&range))?;
 
 One variant. And the slice is also what a CUDA graph needs: a graph replays the
 launch with the same view, so the pass number comes along for free.
+[cloth](./cloth.md) reuses the same table for its 12 constraint batches.
 
 ## Compile time is run time
 

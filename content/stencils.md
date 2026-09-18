@@ -149,19 +149,26 @@ does by clamping. See [Gathers](./light2d.md#gathers-the-unsafe-escape-hatch).
 
 ## Choosing between them
 
-|                  | Valid convolution         | Offset split and ghost ring             |
-| ---------------- | ------------------------- | --------------------------------------- |
-| Output size      | shrinks by `2R` per stage | same every step                         |
-| Border           | host pads once            | ghost tiles, recomputed each step       |
-| Loading          | `view.load_like(out)`     | device-side `partition` + `load([…])`   |
-| Block arithmetic | none                      | alias ghost indices, subtract 1         |
-| In tileworld     | `filters`                 | `life`, `sand`, `light2d` at long range |
+|                  | Valid convolution         | Offset split and ghost ring                      |
+| ---------------- | ------------------------- | ------------------------------------------------ |
+| Output size      | shrinks by `2R` per stage | same every step                                  |
+| Border           | host pads once            | ghost tiles, recomputed each step                |
+| Loading          | `view.load_like(out)`     | device-side `partition` + `load([…])`            |
+| Block arithmetic | none                      | alias ghost indices, subtract 1                  |
+| In tileworld     | `filters`                 | `life`, `sand`, `cloth`, `light2d` at long range |
 
 [sand](./sand.md) reads the same nine views as `life`, but its cells move, so
 each one picks the three other cells of its 2×2 Margolus block out of the
 neighborhood and runs the block's rule. Its ghost ring is a wall that is never
 updated, which is the third way to handle an edge in the workspace, after
 `life`'s wrap and `light2d`'s padding rules.
+
+[cloth](./cloth.md#one-kernel-whatever-the-direction) adds a variation on the
+offset split. Its constraint kernel needs views shifted in six different
+directions, and views of different shapes would each JIT another variant. So
+every view is cut to the same shape, starting inside the ghost ring at
+`TILE + offset`, and loaded at block `[i − 1, j − 1]` whatever the offset. The
+ghost ring is what makes a negative offset a positive start row.
 
 The [Playground](/playground) runs the `life` kernel in the browser. Hover a
 tile program to see the blocks its views load.

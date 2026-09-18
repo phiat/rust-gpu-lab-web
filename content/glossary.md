@@ -121,3 +121,27 @@ to the same place. See [Project: sand](./sand.md).
 integer hash of coordinates and a per-pass salt, since kernels have no RNG. A
 CPU running the same hash gets the same bits, so the results can be compared
 exactly. `sand` uses lowbias32.
+
+**Position based dynamics (PBD)**: a simulation method that integrates positions
+(Verlet), then repeatedly projects constraints by moving particles directly,
+instead of computing forces. See [Project: cloth](./cloth.md).
+
+**Verlet integration**: advancing a position from its current and previous
+positions, `x + (x − x_prev) + a·dt²`, so velocity is implicit.
+
+**Jacobi / Gauss-Seidel**: two ways to iterate a solver. Jacobi updates every
+element from the previous pass's values; Gauss-Seidel uses updated values as
+soon as they exist, which converges faster. **Red/black** ordering makes
+Gauss-Seidel parallel for a one-link stencil; `cloth` generalizes it by coloring
+constraints into batches.
+
+**Constraint batch**: a set of links in which no particle appears twice, so all
+of them can be projected in one pass with both ends moving.
+
+**Long range attachment (LRA)**: clamping each particle to within its flat-cloth
+distance of its nearest pin, every pass, so a curtain doesn't sag while
+corrections propagate one link per pass.
+
+**Scatter**: writing to computed, per-element destinations, the mirror of a
+gather. The tile model has no primitive for it; `cloth` rasterizes on the CPU
+for that reason.

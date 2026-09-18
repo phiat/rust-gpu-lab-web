@@ -13,14 +13,14 @@ notebook: concept notes, interactive demos, and a live view of the workspace.
 
 ## The workspace
 
-| Piece                 | Value                                                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Crates                | six demos (`mandelbrot`, `life`, `filters`, `raymarch`, `light2d`, `sand`) and `tilekit`, their shared host helpers |
-| Rust                  | edition 2021, `rust-version = "1.89"` (stable, no nightly)                                                          |
-| `cutile`, `cuda-core` | git, pinned to rev `d92c160`                                                                                        |
-| Other deps            | `clap`, `rayon`, `image` (PNG and JPEG), `minifb` (X11 only, for the windows)                                       |
-| CUDA                  | `.cargo/config.toml` sets `CUDA_TOOLKIT_PATH` to CUDA 13.3                                                          |
-| History               | one commit per crate, then the README, a license, `tilekit` and `sand`                                              |
+| Piece                 | Value                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Crates                | seven demos (`mandelbrot`, `life`, `filters`, `raymarch`, `light2d`, `sand`, `cloth`) and `tilekit`, their shared host helpers |
+| Rust                  | edition 2021, `rust-version = "1.89"` (stable, no nightly)                                                                     |
+| `cutile`, `cuda-core` | git, pinned to rev `d92c160`                                                                                                   |
+| Other deps            | `clap`, `rayon`, `image` (PNG and JPEG), `minifb` (X11 only, for the windows)                                                  |
+| CUDA                  | `.cargo/config.toml` sets `CUDA_TOOLKIT_PATH` to CUDA 13.3                                                                     |
+| History               | one commit per crate, then the README, a license, `tilekit`, `sand` and `cloth`                                                |
 
 Each demo has a CPU reference in `cpu.rs`, the cuTile version in `gpu.rs`, and a
 `bench` command that checks the two agree before timing them. From `life` on,
@@ -46,7 +46,7 @@ From the workspace README:
 - **Rust 1.89 or newer**, stable.
 - **Linux.** Tested on WSL2 with Ubuntu 24.04.
 - **An X11 display** for the windowed demos (`life`, `raymarch`, `light2d`,
-  `sand`). On WSL2, WSLg provides one.
+  `sand`, `cloth`). On WSL2, WSLg provides one.
 
 `.cargo/config.toml` points `CUDA_TOOLKIT_PATH` at `/usr/local/cuda-13.3`. If
 your toolkit is elsewhere, edit that file or export the variable yourself: Cargo
@@ -84,6 +84,8 @@ cargo run --release -p light2d -- run                  # paint lights and walls 
 cargo run --release -p light2d -- check                # jump flood vs exact distance transform
 cargo run --release -p sand -- run                     # paint sand, water, oil and fire in a window
 cargo run --release -p sand -- check --frames 60       # GPU vs CPU, cell for cell
+cargo run --release -p cloth -- run                    # cloth in the wind over a sphere
+cargo run --release -p cloth -- bench                  # CPU (8 and 28 threads) vs GPU
 cargo run --release -p <crate> -- --help               # every command and option
 ```
 
@@ -94,7 +96,8 @@ saves compiled kernels to `~/.cache/cutile/kernels`, so later runs start in
 
 More flags are in each project note: [mandelbrot](./mandelbrot.md),
 [life](./life.md), [filters](./filters.md), [raymarch](./raymarch.md),
-[light2d](./light2d.md), [sand](./sand.md) and [tilekit](./tilekit.md).
+[light2d](./light2d.md), [sand](./sand.md), [cloth](./cloth.md) and
+[tilekit](./tilekit.md).
 
 ## Where each idea is taught
 
@@ -118,6 +121,9 @@ that explain each topic:
 | Moving cells without conflicts: Margolus blocks, hashed randomness          | `sand`                          | [sand](./sand.md)                                                             |
 | Per-launch integers through a tensor view, so one kernel variant, not three | `sand`                          | [sand](./sand.md), [Compilation](./compilation.md)                            |
 | Fewer tile ops means faster compile _and_ faster frames                     | `sand`                          | [sand](./sand.md), [Compilation](./compilation.md)                            |
+| Coloring constraints into batches (red/black generalized); why it matters   | `cloth`                         | [cloth](./cloth.md)                                                           |
+| Same-shaped views so one kernel serves every stencil direction              | `cloth`                         | [cloth](./cloth.md), [Stencils](./stencils.md)                                |
+| Where the tile model stops: rasterizing on the CPU                          | `cloth`                         | [cloth](./cloth.md)                                                           |
 
 To check that the toolchain works end to end, run the upstream hello world from
 a clone of `cutile-rs` checked out at the same rev:
@@ -134,9 +140,7 @@ The workspace README keeps a roadmap. Everything on it is grid-shaped, so the
 stencil, gather and CUDA graph lessons carry over. In order:
 
 1. ~~**Falling sand**~~: done, see [sand](./sand.md).
-2. **Cloth and soft bodies**: a grid of particles joined by constraints, with
-   wind and a collider. An iterative solver with red/black passes, and a grid
-   that holds objects instead of pixels.
+2. ~~**Cloth**~~: done, see [cloth](./cloth.md). Soft bodies are in its ideas.
 3. **Smoke and fluid** (stable fluids): advection as an interpolated gather, a
    20–40 pass pressure solve per frame, and `light2d`-style painted obstacles.
 4. **Flow-field pathfinding with crowds**: a distance-to-goal field that

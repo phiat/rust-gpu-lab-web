@@ -10,12 +10,12 @@ that kept getting copied between demos: about 150 lines, no kernels. It came out
 of one measurement. In [filters](./filters.md), the GPU work for a 4K frame took
 0.64 ms, and getting the frame to and from the GPU took more than 5 ms.
 
-| Piece                | What it does                                                          | Used by                                  |
-| -------------------- | --------------------------------------------------------------------- | ---------------------------------------- |
-| `Pinned<T>`          | page-locked host buffer, allocated once, with `upload` and `download` | `filters`, `raymarch`, `light2d`, `sand` |
-| `Submit`, `Eager`    | run a pipeline eagerly or record it into a CUDA graph                 | `filters`, `light2d`, `sand`             |
-| `enable_jit_cache()` | turn on cuTile's disk cache at the default location                   | every demo                               |
-| `as_u32()`           | view packed `i32` pixels as the `u32` a window wants, without a copy  | `raymarch`, `light2d`, `sand`            |
+| Piece                | What it does                                                          | Used by                                           |
+| -------------------- | --------------------------------------------------------------------- | ------------------------------------------------- |
+| `Pinned<T>`          | page-locked host buffer, allocated once, with `upload` and `download` | `filters`, `raymarch`, `light2d`, `sand`, `cloth` |
+| `Submit`, `Eager`    | run a pipeline eagerly or record it into a CUDA graph                 | `filters`, `light2d`, `sand`, `cloth`             |
+| `enable_jit_cache()` | turn on cuTile's disk cache at the default location                   | every demo                                        |
+| `as_u32()`           | view packed `i32` pixels as the `u32` a window wants, without a copy  | `raymarch`, `light2d`, `sand`                     |
 
 ## Why transfers were slow
 
@@ -100,20 +100,21 @@ the `u32` pixels `minifb` wants, which replaces a per-pixel `map` and `collect`.
 
 RTX 4070 Ti SUPER, per frame:
 
-| Demo                      | Transfer       | Pageable | Pinned  | End to end          |
-| ------------------------- | -------------- | -------- | ------- | ------------------- |
-| `filters`, 4K frame       | upload         | 4.6 ms   | 3.0 ms  | about 170 → 245 fps |
-|                           | download       | 0.8 ms   | 0.4 ms  |                     |
-| `raymarch`, 720p window   | download       | 0.39 ms  | 0.22 ms | 310 → 335 fps       |
-|                           | params upload  | 0.12 ms  | 0.05 ms |                     |
-| `light2d`, 640×352 window | frame download | 0.22 ms  | 0.12 ms | 355 → 360 fps       |
-| `sand`, 640×352 window    | paint upload   | —        | 0.08 ms | about 600 fps       |
-|                           | frame download | —        | 0.13 ms |                     |
+| Demo                      | Transfer        | Pageable | Pinned  | End to end          |
+| ------------------------- | --------------- | -------- | ------- | ------------------- |
+| `filters`, 4K frame       | upload          | 4.6 ms   | 3.0 ms  | about 170 → 245 fps |
+|                           | download        | 0.8 ms   | 0.4 ms  |                     |
+| `raymarch`, 720p window   | download        | 0.39 ms  | 0.22 ms | 310 → 335 fps       |
+|                           | params upload   | 0.12 ms  | 0.05 ms |                     |
+| `light2d`, 640×352 window | frame download  | 0.22 ms  | 0.12 ms | 355 → 360 fps       |
+| `sand`, 640×352 window    | paint upload    | —        | 0.08 ms | about 600 fps       |
+|                           | frame download  | —        | 0.13 ms |                     |
+| `cloth`, 256×160          | params + screen | —        | 0.07 ms | about 180 fps       |
 
 Of `filters`' 3.0 ms upload, 1.3 ms is the benchmark copying its frame into the
 pinned buffer, and the transfer itself runs at about 20 GB/s. A decoder or
 camera writing straight into `Pipeline::frame_in()` would skip that copy. `sand`
-has no pageable column because it was written after `tilekit`.
+and `cloth` have no pageable column because they were written after `tilekit`.
 
 The gain tracks how much of a frame is transfer. `filters` moves 33 MB for 0.64
 ms of compute and gains 45%. `raymarch` gains 8%, and its remaining millisecond
@@ -128,7 +129,7 @@ next thing to try.
 ## `Submit`: one pipeline, eager or graph
 
 `filters` and `light2d` each carried an identical copy of this trait, and it now
-lives here (`sand` uses it too):
+lives here (`sand` and `cloth` use it too):
 
 ```rust
 /// Runs a device op either eagerly or as part of a graph capture, so a
@@ -156,9 +157,9 @@ pub fn enable_jit_cache() -> Result<(), Box<dyn std::error::Error>> {
 
 Every demo's `main` calls it. `raymarch` and `light2d` already had the cache on;
 `mandelbrot`, `life` and `filters` gained it, and their startup dropped from
-about 0.75–0.9 s to 0.3 s; `sand` was written with it. A hit skips `tileiras`
-(0.3–30 s per kernel in this workspace) but not the IR build, which still costs
-40–300 ms per kernel variant on every start.
+about 0.75–0.9 s to 0.3 s; `sand` and `cloth` were written with it. A hit skips
+`tileiras` (0.3–30 s per kernel in this workspace) but not the IR build, which
+still costs 40–300 ms per kernel variant on every start.
 [Compilation](./compilation.md#disk-cache-opt-in) has the details.
 
 ## Clippy, and code that mirrors a kernel

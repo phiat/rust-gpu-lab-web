@@ -95,7 +95,9 @@ pub fn upload(&mut self) -> Result<(), Error> {
   in which is which, so it captures an even-frame graph and an odd-frame graph
   and alternates between them. `sand` does the same for its two world buffers: a
   frame's paint step plus an even number of passes ends in the other buffer from
-  where it started, so even and odd frames each get a graph.
+  where it started, so even and odd frames each get a graph. `cloth`'s end
+  buffer depends on the substep count, so it captures one graph per starting
+  parity and asks `end_parity()` where the result landed.
 - **A per-launch integer as a view, not a scalar.** `sand`'s pass number is a
   `[4]` slice of a small device tensor. A graph replays each launch with its own
   slice, and the JIT compiles one variant instead of specializing on the
@@ -131,6 +133,8 @@ SUPER, per generation or frame:
 | `raymarch` 1080p, 1 kernel       | 3.19 ms  | 3.17 ms  | 1.01×   |
 | `sand` 640×352, 6 kernels        | 0.356 ms | 0.231 ms | 1.5×    |
 | `sand` 1920×1088, 6 kernels      | 1.28 ms  | 1.10 ms  | 1.16×   |
+| `cloth` 256×160, 102 launches    | 3.01 ms  | 0.91 ms  | 3.3×    |
+| `cloth` 512×320, 102 launches    | 3.60 ms  | 1.34 ms  | 2.7×    |
 | `light2d` 640×352, 16 kernels    | 1.14 ms  | 0.65 ms  | 1.75×   |
 
 The fewer and heavier the kernels, the less there is to save: a `raymarch` frame
